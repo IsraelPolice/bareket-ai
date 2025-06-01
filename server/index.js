@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const Replicate = require("replicate");
-require("dotenv").config();
+require("dotenv").config({ path: __dirname + "/.env" }); // הגדרה מפורשת של מיקום .env
 
 const app = express();
 app.use(cors());
@@ -9,89 +9,114 @@ app.use(express.json());
 
 // בדיקת טעינת ה-Token
 console.log("Loading environment variables...");
-if (!process.env.REPLICATE_API_TOKEN) {
+const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
+if (!REPLICATE_API_TOKEN) {
   console.error("ERROR: REPLICATE_API_TOKEN is not set in .env");
   process.exit(1); // עצור את השרת אם אין Token
 } else {
-  console.log("Full REPLICATE_API_TOKEN:", process.env.REPLICATE_API_TOKEN);
+  console.log("Full REPLICATE_API_TOKEN is loaded successfully.");
 }
 
 // יצירת אובייקט Replicate עם ה-Token
 const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN,
+  auth: REPLICATE_API_TOKEN,
 });
 
 // בדיקת תקינות ה-Token עם בקשה פשוטה ל-Replicate
 async function testReplicateAuth() {
   try {
-    await replicate.models.list(); // בקשה פשוטה לרשימת מודלים
-    console.log("Replicate authentication successful!");
+    const models = await replicate.models.list();
+    console.log(
+      "Replicate authentication successful! Models found:",
+      models.length
+    );
+    return true;
   } catch (error) {
-    console.error("Replicate authentication failed:", error.message);
-    process.exit(1); // עצור את השרת אם האימות נכשל
+    console.error(
+      "Replicate authentication failed:",
+      error.message,
+      error.stack
+    );
+    return false;
   }
 }
-testReplicateAuth();
 
-app.post("/generate-image", async (req, res) => {
-  try {
-    const { prompt } = req.body;
-    console.log("Received prompt:", prompt);
-    if (!prompt) {
-      return res.status(400).json({ error: "Prompt is required" });
-    }
+// המתנה לאימות לפני הפעלת השרת
+async function startServer() {
+  const isAuthenticated = await testReplicateAuth();
+  if (!isAuthenticated) {
+    console.error("Server cannot start due to authentication failure.");
+    process.exit(1);
+  }
 
-    const model =
-      "stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc";
-    console.log("Running Replicate with model:", model);
-    const output = await replicate.run(model, {
-      input: {
-        prompt: prompt,
-        width: 768,
-        height: 768,
-        refine: "expert_ensemble_refiner",
-        apply_watermark: false,
-        num_inference_steps: 25,
-        guidance_scale: 7.5,
-      },
-    });
+  // הגדרת נתיבי ה-API
+  app.post("/generate-image", async (req, res) => {
+    try {
+      const { prompt } = req.body;
+      console.log("Received prompt:", prompt);
+      if (!prompt) {
+        return res.status(400).json({ error: "Prompt is required" });
+      }
 
-    console.log("Replicate output (raw):", JSON.stringify(output, null, 2));
-    let imageUrl = "";
-    if (Array.isArray(output) && output.length > 0) {
-      if (typeof output[0] === "string" && output[0].startsWith("http")) {
-        imageUrl = output[0]; // URL ישיר
-      } else if (output[0] instanceof ReadableStream) {
-        // טיפול ב-ReadableStream
-        const chunks = [];
-        for await (const chunk of output[0]) {
-          chunks.push(chunk);
+      const model =
+        "stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc";
+      console.log("Running Replicate with model:", model);
+      const output = await replicate.run(model, {
+        input: {
+          prompt: prompt,
+          width: 768,
+          height: 768,
+          refine: "expert_ensemble_refiner",
+          apply_watermark: false,
+          num_inference_steps: 25,
+          guidance_scale: 7.5,
+        },
+      });
+
+      console.log("Replicate output (raw):", JSON.stringify(output, null, 2));
+      let imageUrl = "";
+      if (Array.isArray(output) && output.length > 0) {
+        if (typeof output[0] === "string" && output[0].startsWith("http")) {
+          imageUrl = output[0]; // URL ישיר
+        } else if (output[0] instanceof ReadableStream) {
+          // טיפול ב-ReadableStream
+          const chunks = [];
+          for await (const chunk of output[0]) {
+            chunks.push(chunk);
+          }
+          const imageData = Buffer.concat(chunks).toString("base64");
+          imageUrl = `data:image/png;base64,${imageData}`;
+        } else {
+          console.error("Unexpected Replicate output format:", output);
+          return res
+            .status(500)
+            .json({ error: "Unexpected Replicate output format" });
         }
-        const imageData = Buffer.concat(chunks).toString("base64");
-        imageUrl = `data:image/png;base64,${imageData}`;
       } else {
-        console.error("Unexpected Replicate output format:", output);
+        console.error("No valid output from Replicate:", output);
         return res
           .status(500)
-          .json({ error: "Unexpected Replicate output format" });
+          .json({ error: "No valid image generated by Replicate" });
       }
-    } else {
-      console.error("No valid output from Replicate:", output);
-      return res
+
+      res.json({ image: imageUrl });
+    } catch (error) {
+      console.error("Error in generate-image:", error.message, error.stack);
+      res
         .status(500)
-        .json({ error: "No valid image generated by Replicate" });
+        .json({ error: "Internal server error", details: error.message });
     }
+  });
 
-    res.json({ image: imageUrl });
-  } catch (error) {
-    console.error("Error in generate-image:", error.message, error.stack);
-    res
-      .status(500)
-      .json({ error: "Internal server error", details: error.message });
-  }
-});
+  // הפעלת השרת
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+// הפעלת השרת רק לאחר אימות
+startServer().catch((error) => {
+  console.error("Failed to start server:", error);
+  process.exit(1);
 });
