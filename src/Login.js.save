@@ -1,0 +1,99 @@
+import React, { useState } from 'react';
+import { auth } from './firebase';
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
+import { Box, Button, Input, VStack, Text, Link, Container, Heading } from '@chakra-ui/react';
+
+const Login = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const navigate = useNavigate();
+  const provider = new GoogleAuthProvider();
+
+  const handleLogin = async () => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      navigate('/dashboard');
+    } catch (error) {
+      alert(`Login failed: ${error.message}`);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      await signInWithPopup(auth, provider);
+      navigate('/dashboard');
+    } catch (error) {
+      alert(`Google login failed: ${error.message}`);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      alert('Please enter your email');
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      alert('Password reset email sent. Check your inbox.');
+    } catch (error) {
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  return (
+    <Container maxW="container.sm" py={10} minH="100vh" bg="gray.50">
+      <VStack spacing={6} p={6} bg="white" rounded="lg" boxShadow="md">
+        <Heading as="h1" size="xl" textAlign="center" color="teal.600">
+          Login to Bareket AI
+        </Heading>
+        <Input
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          size="lg"
+          focusBorderColor="teal.500"
+          aria-label="Email input"
+        />
+        <Input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          size="lg"
+          focusBorderColor="teal.500"
+          aria-label="Password input"
+        />
+        <Button
+          colorScheme="teal"
+          size="lg"
+          onClick={handleLogin}
+          width="full"
+          aria-label="Login"
+        >
+          Login
+        </Button>
+        <Button
+          colorScheme="blue"
+          size="lg"
+          onClick={handleGoogleLogin}
+          width="full"
+          aria-label="Login with Google"
+        >
+          Login with Google
+        </Button>
+        <Link color="teal.500" onClick={handleForgotPassword} aria-label="Forgot password">
+          Forgot Password?
+        </Link>
+        <Text>
+          Don't have an account?{' '}
+          <Link color="teal.500" onClick={() => navigate('/signup')}>
+            Sign Up
+          </Link>
+        </Text>
+      </VStack>
+    </Container>
+  );
+};
+
+export default Login;
