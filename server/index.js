@@ -7,18 +7,31 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// בדיקת טעינת ה-Token
+console.log("Loading environment variables...");
+if (!process.env.REPLICATE_API_TOKEN) {
+  console.error("ERROR: REPLICATE_API_TOKEN is not set in .env");
+  process.exit(1); // עצור את השרת אם אין Token
+} else {
+  console.log("Full REPLICATE_API_TOKEN:", process.env.REPLICATE_API_TOKEN);
+}
+
+// יצירת אובייקט Replicate עם ה-Token
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
-if (!process.env.REPLICATE_API_TOKEN) {
-  console.error("ERROR: REPLICATE_API_TOKEN is not set in .env");
-} else {
-  console.log(
-    "REPLICATE_API_TOKEN is set and valid:",
-    process.env.REPLICATE_API_TOKEN.substring(0, 5) + "..."
-  );
+// בדיקת תקינות ה-Token עם בקשה פשוטה ל-Replicate
+async function testReplicateAuth() {
+  try {
+    await replicate.models.list(); // בקשה פשוטה לרשימת מודלים
+    console.log("Replicate authentication successful!");
+  } catch (error) {
+    console.error("Replicate authentication failed:", error.message);
+    process.exit(1); // עצור את השרת אם האימות נכשל
+  }
 }
+testReplicateAuth();
 
 app.post("/generate-image", async (req, res) => {
   try {
