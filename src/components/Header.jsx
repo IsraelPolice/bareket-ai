@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import "../styles/Header.css";
-import logo from "../assets/logo.png"; // ייבוא הלוגו
+import logo from "../assets/logo.png"; // Logo import
 
 function Header() {
   const navigate = useNavigate();
@@ -38,25 +38,15 @@ function Header() {
 
   return (
     <nav className="navbar navbar-expand-lg navbar-light bg-light">
-      <div className="container-fluid">
+      <div className="container-fluid header-container">
         <Link className="navbar-brand" to="/">
           <img src={logo} alt="Bareket AI Logo" className="logo" />
         </Link>
-        <button
-          className="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
-          aria-controls="navbarNav"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
-        >
-          <span className="navbar-toggler-icon"></span>
-        </button>
-        <div className="collapse navbar-collapse" id="navbarNav">
-          <div className="navbar-nav ms-auto">
-            {isLandingPage && (
-              <>
+
+        <div className="navbar-nav-wrapper">
+          {isLandingPage && (
+            <>
+              <div className="navbar-links">
                 <button
                   className="nav-link btn btn-link"
                   onClick={() => scrollToSection("features")}
@@ -81,43 +71,40 @@ function Header() {
                 >
                   Example
                 </button>
-                <button
-                  className="btn btn-primary ms-2"
-                  onClick={() => navigate("/generator")}
-                >
-                  Go To App
-                </button>
-              </>
-            )}
+              </div>
+              <button
+                className="btn btn-primary go-to-app-btn"
+                onClick={() => navigate("/generator")}
+              >
+                Go To App
+              </button>
+            </>
+          )}
 
-            {!isLandingPage && user && (
-              <>
-                <Link className="nav-link" to="/generator">
-                  Image Generator
-                </Link>
-                <Link className="nav-link" to="/admin">
-                  Admin Panel
-                </Link>
-                <button
-                  className="btn btn-link nav-link"
-                  onClick={handleLogout}
-                >
-                  Logout
-                </button>
-              </>
-            )}
+          {!isLandingPage && user && (
+            <div className="navbar-links">
+              <Link className="nav-link" to="/generator">
+                Image Generator
+              </Link>
+              <Link className="nav-link" to="/admin">
+                Admin Panel
+              </Link>
+              <button className="btn btn-link nav-link" onClick={handleLogout}>
+                Logout
+              </button>
+            </div>
+          )}
 
-            {!isLandingPage && !user && (
-              <>
-                <Link className="nav-link" to="/login">
-                  Login
-                </Link>
-                <Link className="nav-link" to="/signup">
-                  Sign Up
-                </Link>
-              </>
-            )}
-          </div>
+          {!isLandingPage && !user && (
+            <div className="navbar-links">
+              <Link className="nav-link" to="/login">
+                Login
+              </Link>
+              <Link className="nav-link" to="/signup">
+                Sign Up
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </nav>
