@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { auth, db } from "./firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
+import {
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
+} from "firebase/auth";
 
 const AdminPanel = () => {
   const [previousImages, setPreviousImages] = useState([]);
   const [activeSection, setActiveSection] = useState("previousImages");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState(""); // הוספנו שדה לסיסמה הנוכחית
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -16,11 +22,20 @@ const AdminPanel = () => {
       if (user) {
         const userId = user.uid;
         const imagesRef = doc(db, "users", userId, "images", "list");
-        const imagesSnap = await getDoc(imagesRef);
-        if (imagesSnap.exists()) {
-          const imagesData = imagesSnap.data().list || [];
-          setPreviousImages(imagesData);
+        try {
+          const imagesSnap = await getDoc(imagesRef);
+          if (imagesSnap.exists()) {
+            const imagesData = imagesSnap.data().list || [];
+            setPreviousImages(imagesData);
+          } else {
+            await setDoc(imagesRef, { list: [] }, { merge: true });
+            setPreviousImages([]);
+          }
+        } catch (err) {
+          setError("Failed to fetch images: " + err.message);
         }
+      } else {
+        setError("Please sign in to access your images.");
       }
     };
     fetchImages();
@@ -28,20 +43,32 @@ const AdminPanel = () => {
 
   const deleteImage = async (index) => {
     const user = auth.currentUser;
-    const userId = user.uid;
-    const updatedImages = previousImages.filter((_, i) => i !== index);
-    setPreviousImages(updatedImages);
-    const imagesRef = doc(db, "users", userId, "images", "list");
-    await updateDoc(imagesRef, { list: updatedImages });
+    if (user) {
+      const userId = user.uid;
+      const updatedImages = previousImages.filter((_, i) => i !== index);
+      setPreviousImages(updatedImages);
+      const imagesRef = doc(db, "users", userId, "images", "list");
+      try {
+        await updateDoc(imagesRef, { list: updatedImages });
+      } catch (err) {
+        setError("Failed to delete image: " + err.message);
+      }
+    } else {
+      setError("Please sign in to delete images.");
+    }
   };
 
   const downloadImage = (img, alt) => {
-    const link = document.createElement("a");
-    link.href = img.src;
-    link.download = `${alt || "image"}-${Date.now()}.png`; // Changed to .png
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (img && img.src) {
+      const link = document.createElement("a");
+      link.href = img.src;
+      link.download = `${alt || "image"}-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      setError("Image source is missing.");
+    }
   };
 
   const handleChangePassword = async (e) => {
@@ -52,13 +79,41 @@ const AdminPanel = () => {
       setError("Passwords do not match.");
       return;
     }
+    if (!currentPassword) {
+      setError("Please enter your current password to proceed.");
+      return;
+    }
     try {
       const user = auth.currentUser;
-      await updateDoc(doc(db, "users", userId), { password });
-      await user.updatePassword(password);
+      if (!user) {
+        setError("No user is signed in.");
+        return;
+      }
+      const userId = user.uid;
+
+      // Reauthenticate the user
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        currentPassword
+      );
+      await reauthenticateWithCredential(user, credential);
+
+      // Update the password
+      await updatePassword(user, password);
+
+      // Update Firestore document (if necessary)
+      const userRef = doc(db, "users", userId);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        await updateDoc(userRef, { password });
+      } else {
+        await setDoc(userRef, { password }, { merge: true });
+      }
+
       setSuccess("Password updated successfully!");
       setPassword("");
       setConfirmPassword("");
+      setCurrentPassword("");
     } catch (err) {
       setError("Failed to update password: " + err.message);
     }
@@ -110,6 +165,19 @@ const AdminPanel = () => {
               {success && <div className="alert alert-success">{success}</div>}
               <form onSubmit={handleChangePassword}>
                 <div className="mb-3">
+                  <label htmlFor="currentPassword" className="form-label">
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    className="form-control"
+                    id="currentPassword"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="mb-3">
                   <label htmlFor="password" className="form-label">
                     New Password
                   </label>
@@ -149,13 +217,19 @@ const AdminPanel = () => {
                   {previousImages.map((img, index) => (
                     <div key={index} className="col-md-4 mb-3">
                       <div className="card">
-                        <img
-                          src={img.src}
-                          alt={img.alt}
-                          className="card-img-top"
-                        />
+                        {img.src ? (
+                          <img
+                            src={img.src}
+                            alt={img.alt || "Image"}
+                            className="card-img-top"
+                          />
+                        ) : (
+                          <p className="text-center p-3">Image not available</p>
+                        )}
                         <div className="card-body">
-                          <p className="card-text">{img.alt}</p>
+                          <p className="card-text">
+                            {img.alt || "No description"}
+                          </p>
                           <button
                             className="btn btn-danger me-2"
                             onClick={() => deleteImage(index)}
