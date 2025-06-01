@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import "../styles/Header.css";
+import logo from "../assets/logo.png"; // ייבוא הלוגו
 
 function Header() {
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ function Header() {
     <nav className="navbar navbar-expand-lg navbar-light bg-light">
       <div className="container-fluid">
         <Link className="navbar-brand" to="/">
-          Bareket AI
+          <img src={logo} alt="Bareket AI Logo" className="logo" />
         </Link>
         <button
           className="navbar-toggler"

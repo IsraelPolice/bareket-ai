@@ -12,15 +12,18 @@
 
 /* לוגו / כותרת */
 .navbar-logo {
-  font-size: 1.6rem;
-  font-weight: bold;
-  color: white;
+  display: flex;
+  align-items: center;
   text-decoration: none;
   transition: color 0.3s ease;
 }
 
-.navbar-logo:hover {
-  color: #00d4ff;
+/* עיצוב התמונה של הלוגו */
+.logo {
+  height: 40px; /* גובה הלוגו */
+  width: auto; /* שמור על יחס התמונה */
+  max-width: 150px; /* הגבל את הרוחב */
+  object-fit: contain; /* ודא שהתמונה לא מעוותת */
 }
 
 /* רשימת הכפתורים/קישורים */
@@ -63,4 +66,26 @@
 
 .go-to-app-btn:hover {
   background-color: #00b8e6;
+}
+
+/* התאמות למסכים קטנים */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 10px 20px;
+  }
+
+  .logo {
+    height: 30px; /* גודל קטן יותר במובייל */
+    max-width: 120px;
+  }
+
+  .navbar-links {
+    gap: 16px;
+  }
+
+  .navbar-links a,
+  .navbar-links button {
+    font-size: 0.9rem;
+    padding: 4px 8px;
+  }
 }
