@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
+import "../styles/Header.css";
 
 function Header() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -21,6 +23,15 @@ function Header() {
       navigate("/login");
     } catch (err) {
       console.error("Logout error:", err);
+    }
+  };
+
+  const isLandingPage = location.pathname === "/";
+
+  const scrollToSection = (id) => {
+    const section = document.getElementById(id);
+    if (section) {
+      section.scrollIntoView({ behavior: "smooth" });
     }
   };
 
@@ -42,8 +53,43 @@ function Header() {
           <span className="navbar-toggler-icon"></span>
         </button>
         <div className="collapse navbar-collapse" id="navbarNav">
-          <div className="navbar-nav">
-            {user && (
+          <div className="navbar-nav ms-auto">
+            {isLandingPage && (
+              <>
+                <button
+                  className="nav-link btn btn-link"
+                  onClick={() => scrollToSection("features")}
+                >
+                  Features
+                </button>
+                <button
+                  className="nav-link btn btn-link"
+                  onClick={() => scrollToSection("learn")}
+                >
+                  Learn
+                </button>
+                <button
+                  className="nav-link btn btn-link"
+                  onClick={() => scrollToSection("contact")}
+                >
+                  Contact
+                </button>
+                <button
+                  className="nav-link btn btn-link"
+                  onClick={() => scrollToSection("example")}
+                >
+                  Example
+                </button>
+                <button
+                  className="btn btn-primary ms-2"
+                  onClick={() => navigate("/generator")}
+                >
+                  Go To App
+                </button>
+              </>
+            )}
+
+            {!isLandingPage && user && (
               <>
                 <Link className="nav-link" to="/generator">
                   Image Generator
@@ -51,13 +97,16 @@ function Header() {
                 <Link className="nav-link" to="/admin">
                   Admin Panel
                 </Link>
+                <button
+                  className="btn btn-link nav-link"
+                  onClick={handleLogout}
+                >
+                  Logout
+                </button>
               </>
             )}
-            {user ? (
-              <button className="btn btn-link nav-link" onClick={handleLogout}>
-                Logout
-              </button>
-            ) : (
+
+            {!isLandingPage && !user && (
               <>
                 <Link className="nav-link" to="/login">
                   Login

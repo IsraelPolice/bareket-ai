@@ -1,0 +1,66 @@
+/* עיצוב כללי לשורת הניווט */
+.navbar {
+  background-color: #1e1e2f;
+  color: white;
+  padding: 12px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  direction: rtl; /* כיווניות מימין לשמאל */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* לוגו / כותרת */
+.navbar-logo {
+  font-size: 1.6rem;
+  font-weight: bold;
+  color: white;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.navbar-logo:hover {
+  color: #00d4ff;
+}
+
+/* רשימת הכפתורים/קישורים */
+.navbar-links {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+/* כל קישור */
+.navbar-links a,
+.navbar-links button {
+  color: white;
+  background: none;
+  border: none;
+  text-decoration: none;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  padding: 6px 10px;
+}
+
+/* מעבר על קישור */
+.navbar-links a:hover,
+.navbar-links button:hover {
+  color: #00d4ff;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+}
+
+/* כפתור בולט - מעבר לאפליקציה */
+.go-to-app-btn {
+  background-color: #00d4ff;
+  color: #1e1e2f;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: bold;
+  transition: background 0.3s ease;
+}
+
+.go-to-app-btn:hover {
+  background-color: #00b8e6;
+}
