@@ -37,13 +37,13 @@ const Dashboard = () => {
           "users",
           auth.currentUser.uid,
           "credits",
-          "credit1"
+          "current"
         );
         const creditsSnap = await getDoc(creditsRef);
         if (creditsSnap.exists()) {
-          setCredits(creditsSnap.data().credits);
+          setCredits(creditsSnap.data().value || 0);
         } else {
-          await setDoc(creditsRef, { credits: 10 });
+          await setDoc(creditsRef, { value: 10 });
           setCredits(10);
         }
       }
@@ -51,15 +51,18 @@ const Dashboard = () => {
 
     const fetchPreviousImages = async () => {
       if (auth.currentUser) {
-        const imagesRef = collection(
+        const imagesRef = doc(
           db,
           "users",
           auth.currentUser.uid,
-          "images"
+          "images",
+          "list"
         );
-        const imagesSnap = await getDocs(imagesRef);
-        const imagesList = imagesSnap.docs.map((doc) => doc.data());
-        setPreviousImages(imagesList);
+        const imagesSnap = await getDoc(imagesRef);
+        if (imagesSnap.exists()) {
+          const imagesList = imagesSnap.data().list || [];
+          setPreviousImages(imagesList);
+        }
       }
     };
 
@@ -73,60 +76,39 @@ const Dashboard = () => {
       return;
     }
     setLoading(true);
-    console.log("Sending prompt to server:", prompt);
     try {
       const response = await axios.post(
         "http://localhost:3001/generate-image",
         { prompt },
-        { headers: { "Content-Type": "application/json" } }
+        {
+          headers: { "Content-Type": "application/json" },
+        }
       );
-      console.log("Server response:", response.data);
       const imageData = response.data.image;
-      if (typeof imageData === "string" && imageData.startsWith("http")) {
-        setImageUrl(imageData); // אם זה URL ישיר
-      } else if (typeof imageData === "string") {
-        // אם זה base64, נעלה ל-Storage
-        const storageRef = ref(
-          storage,
-          `users/${auth.currentUser.uid}/images/${Date.now()}.png`
-        );
-        await uploadString(storageRef, imageData, "data_url");
-        const url = await getDownloadURL(storageRef);
-        setImageUrl(url);
-      } else {
-        throw new Error("Invalid image data format from server");
-      }
+      const user = auth.currentUser;
+      const userId = user.uid;
 
+      // Upload to Storage
       const storageRef = ref(
         storage,
-        `users/${auth.currentUser.uid}/images/${Date.now()}.png`
+        `users/${userId}/images/${Date.now()}.png`
       );
       await uploadString(storageRef, imageData, "data_url");
       const url = await getDownloadURL(storageRef);
+      setImageUrl(url);
 
-      await setDoc(
-        doc(db, "users", auth.currentUser.uid, "images", Date.now().toString()),
-        {
-          url,
-          prompt,
-          timestamp: new Date(),
-        }
-      );
+      // Update credits
+      const newCredits = credits - 1;
+      setCredits(newCredits);
+      const creditsRef = doc(db, "users", userId, "credits", "current");
+      await updateDoc(creditsRef, { value: newCredits });
 
-      const creditsRef = doc(
-        db,
-        "users",
-        auth.currentUser.uid,
-        "credits",
-        "credit1"
-      );
-      await updateDoc(creditsRef, { credits: credits - 1 });
-      setCredits(credits - 1);
-
-      setPreviousImages([
-        ...previousImages,
-        { url, prompt, timestamp: new Date() },
-      ]);
+      // Update previous images
+      const newImage = { url, prompt, timestamp: new Date() };
+      const updatedImages = [newImage, ...previousImages];
+      setPreviousImages(updatedImages);
+      const imagesRef = doc(db, "users", userId, "images", "list");
+      await setDoc(imagesRef, { list: updatedImages }, { merge: true });
     } catch (error) {
       console.error("Error generating image:", error.message, error.stack);
     }

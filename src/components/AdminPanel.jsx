@@ -18,11 +18,11 @@ const AdminPanel = () => {
         const imagesRef = doc(db, "users", userId, "images", "list");
         const imagesSnap = await getDoc(imagesRef);
         if (imagesSnap.exists()) {
-          setPreviousImages(imagesSnap.data().list || []);
+          const imagesData = imagesSnap.data().list || [];
+          setPreviousImages(imagesData);
         }
       }
     };
-
     fetchImages();
   }, []);
 
@@ -38,7 +38,7 @@ const AdminPanel = () => {
   const downloadImage = (img, alt) => {
     const link = document.createElement("a");
     link.href = img.src;
-    link.download = `${alt || "image"}-${Date.now()}.jpg`; // Default to .jpg, adjust if needed
+    link.download = `${alt || "image"}-${Date.now()}.png`; // Changed to .png
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -54,8 +54,8 @@ const AdminPanel = () => {
     }
     try {
       const user = auth.currentUser;
-      await updateDoc(doc(db, "users", user.uid), { password });
-      await user.updatePassword(password); // Update password in Firebase Auth
+      await updateDoc(doc(db, "users", userId), { password });
+      await user.updatePassword(password);
       setSuccess("Password updated successfully!");
       setPassword("");
       setConfirmPassword("");
