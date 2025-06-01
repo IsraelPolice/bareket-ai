@@ -1,13 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, db } from "./firebase"; // ייבוא של Firestore
+import { auth, db } from "./firebase"; // Import Firestore
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore"; // לשמירת נתונים ב-Firestore
+import { doc, setDoc } from "firebase/firestore"; // For storing data in Firestore
 
 const SignUp = () => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -18,21 +17,14 @@ const SignUp = () => {
     e.preventDefault();
     setError("");
 
-    // ולידציה: בדיקת התאמת סיסמאות
+    // Validation: Check password match
     if (password !== confirmPassword) {
-      setError("הסיסמאות אינן תואמות");
-      return;
-    }
-
-    // ולידציה: בדיקת מספר טלפון (פשוטה - רק מספרים, 10 ספרות)
-    const phoneRegex = /^\d{10}$/;
-    if (!phoneRegex.test(phoneNumber)) {
-      setError("מספר טלפון חייב להכיל 10 ספרות בלבד");
+      setError("Passwords do not match");
       return;
     }
 
     try {
-      // יצירת משתמש ב-Firebase Authentication
+      // Create user in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -40,23 +32,22 @@ const SignUp = () => {
       );
       const user = userCredential.user;
 
-      // שמירת נתונים נוספים ב-Firestore תחת users/{uid}
+      // Store additional data in Firestore under users/{uid}
       await setDoc(doc(db, "users", user.uid), {
         firstName,
         lastName,
-        phoneNumber,
         email,
         createdAt: new Date().toISOString(),
       });
 
-      // שמירת קרדיטים ראשוניים (כמו שעשינו קודם)
+      // Store initial credits (as done previously)
       await setDoc(doc(db, "users", user.uid, "credits", "current"), {
         value: 10,
       });
 
-      navigate("/"); // ניווט לעמוד הראשי לאחר הרשמה מוצלחת
+      navigate("/"); // Navigate to homepage after successful signup
     } catch (err) {
-      setError("שגיאה בהרשמה: " + err.message);
+      setError("Signup error: " + err.message);
     }
   };
 
@@ -66,12 +57,12 @@ const SignUp = () => {
 
   return (
     <div className="container mt-5">
-      <h2 className="text-center mb-4">הרשמה</h2>
+      <h2 className="text-center mb-4">Sign Up</h2>
       {error && <div className="alert alert-danger">{error}</div>}
       <form onSubmit={handleSignUp}>
         <div className="mb-3">
           <label htmlFor="firstName" className="form-label">
-            שם פרטי
+            First Name
           </label>
           <input
             type="text"
@@ -84,7 +75,7 @@ const SignUp = () => {
         </div>
         <div className="mb-3">
           <label htmlFor="lastName" className="form-label">
-            שם משפחה
+            Last Name
           </label>
           <input
             type="text"
@@ -96,21 +87,8 @@ const SignUp = () => {
           />
         </div>
         <div className="mb-3">
-          <label htmlFor="phoneNumber" className="form-label">
-            מספר טלפון
-          </label>
-          <input
-            type="tel"
-            className="form-control"
-            id="phoneNumber"
-            value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
-            required
-          />
-        </div>
-        <div className="mb-3">
           <label htmlFor="email" className="form-label">
-            כתובת דוא"ל
+            Email Address
           </label>
           <input
             type="email"
@@ -123,7 +101,7 @@ const SignUp = () => {
         </div>
         <div className="mb-3">
           <label htmlFor="password" className="form-label">
-            סיסמה
+            Password
           </label>
           <input
             type="password"
@@ -136,7 +114,7 @@ const SignUp = () => {
         </div>
         <div className="mb-3">
           <label htmlFor="confirmPassword" className="form-label">
-            אימות סיסמה
+            Confirm Password
           </label>
           <input
             type="password"
@@ -148,13 +126,13 @@ const SignUp = () => {
           />
         </div>
         <button type="submit" className="btn btn-primary w-100">
-          הרשם
+          Sign Up
         </button>
       </form>
       <p className="text-center mt-3">
-        כבר יש לך חשבון?{" "}
+        Already have an account?{" "}
         <button className="btn btn-link p-0" onClick={goToLogin}>
-          התחבר
+          Sign In
         </button>
       </p>
     </div>
