@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "./firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { sendPasswordResetEmail } from "firebase/auth";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -16,22 +17,35 @@ const Login = () => {
       await signInWithEmailAndPassword(auth, email, password);
       navigate("/");
     } catch (err) {
-      setError("שגיאה בהתחברות: " + err.message);
+      setError("Login error: " + err.message);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError("Please enter your email address first.");
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setError("Password reset email sent. Please check your inbox.");
+    } catch (err) {
+      setError("Failed to send reset email: " + err.message);
     }
   };
 
   const goToRegister = () => {
-    navigate("/signup"); // שינוי ל-/signup כדי להתאים ל-SignUp
+    navigate("/signup");
   };
 
   return (
     <div className="container mt-5">
-      <h2 className="text-center mb-4">התחברות</h2>
+      <h2 className="text-center mb-4">Login</h2>
       {error && <div className="alert alert-danger">{error}</div>}
       <form onSubmit={handleLogin}>
         <div className="mb-3">
           <label htmlFor="email" className="form-label">
-            כתובת דוא"ל
+            Email Address
           </label>
           <input
             type="email"
@@ -44,7 +58,7 @@ const Login = () => {
         </div>
         <div className="mb-3">
           <label htmlFor="password" className="form-label">
-            סיסמה
+            Password
           </label>
           <input
             type="password"
@@ -55,14 +69,21 @@ const Login = () => {
             required
           />
         </div>
-        <button type="submit" className="btn btn-primary w-100">
-          התחבר
+        <button type="submit" className="btn btn-primary w-100 mb-2">
+          Login
+        </button>
+        <button
+          type="button"
+          className="btn btn-link text-decoration-none text-end w-100"
+          onClick={handleForgotPassword}
+        >
+          Forgot Password?
         </button>
       </form>
       <p className="text-center mt-3">
-        אין לך חשבון?{" "}
+        Don’t have an account?{" "}
         <button className="btn btn-link p-0" onClick={goToRegister}>
-          הרשם
+          Sign Up
         </button>
       </p>
     </div>
