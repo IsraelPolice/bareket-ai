@@ -73,6 +73,9 @@ function Header() {
               <Link className="nav-link" to="/generator">
                 Image Generator
               </Link>
+              <Link className="nav-link" to="/Vgenerator">
+                Video Generator
+              </Link>
               <Link className="nav-link" to="/admin">
                 Admin Panel
               </Link>

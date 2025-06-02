@@ -11,6 +11,7 @@ import Features from "../components/Features";
 import Learn from "../components/Learn";
 import Contact from "../components/Contact";
 import Example from "../components/Example";
+import VideoGenerator from "../components/VideoGenerator";
 
 const ProtectedRoute = ({ children }) => {
   const navigate = useNavigate();
@@ -52,6 +53,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <ImageGenerator />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/Vgenerator"
+        element={
+          <ProtectedRoute>
+            <VideoGenerator />
           </ProtectedRoute>
         }
       />
