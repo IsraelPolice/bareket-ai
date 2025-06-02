@@ -134,7 +134,7 @@ const ImageGenerator = () => {
 
   return (
     <div className="container mt-4">
-      <h1 className="text-center mb-4">Bareket AI Image Generator</h1>
+      <h1 className="text-center mb-4">Saturn AI Image Generator</h1>
       <div className="alert alert-info mb-3">
         Credits left: {credits !== null ? credits : "Loading..."}
         <button
