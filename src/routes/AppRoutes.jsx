@@ -7,6 +7,10 @@ import SignUp from "../components/SignUp";
 import LandingPage from "../components/LandingPage";
 import { auth } from "../components/firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import Features from "../components/Features";
+import Learn from "../components/Learn";
+import Contact from "../components/Contact";
+import Example from "../components/Example";
 
 const ProtectedRoute = ({ children }) => {
   const navigate = useNavigate();
@@ -38,6 +42,11 @@ const AppRoutes = () => {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
+      <Route path="/features" element={<Features />} />
+      <Route path="/learn" element={<Learn />} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/example" element={<Example />} />
+
       <Route
         path="/generator"
         element={

@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import "../styles/Header.css";
-import logo from "../assets/logo.png"; // Logo import
+import logo from "../assets/logo.png";
 
 function Header() {
   const navigate = useNavigate();
@@ -27,14 +27,13 @@ function Header() {
     }
   };
 
-  const isLandingPage = location.pathname === "/";
-
-  const scrollToSection = (id) => {
-    const section = document.getElementById(id);
-    if (section) {
-      section.scrollIntoView({ behavior: "smooth" });
-    }
-  };
+  const isPublicPage = [
+    "/",
+    "/features",
+    "/learn",
+    "/contact",
+    "/example",
+  ].includes(location.pathname);
 
   return (
     <nav className="navbar navbar-expand-lg navbar-light bg-light">
@@ -44,33 +43,21 @@ function Header() {
         </Link>
 
         <div className="navbar-nav-wrapper">
-          {isLandingPage && (
+          {isPublicPage && (
             <>
               <div className="navbar-links">
-                <button
-                  className="nav-link btn btn-link"
-                  onClick={() => scrollToSection("features")}
-                >
+                <Link className="nav-link" to="/features">
                   Features
-                </button>
-                <button
-                  className="nav-link btn btn-link"
-                  onClick={() => scrollToSection("learn")}
-                >
+                </Link>
+                <Link className="nav-link" to="/learn">
                   Learn
-                </button>
-                <button
-                  className="nav-link btn btn-link"
-                  onClick={() => scrollToSection("contact")}
-                >
+                </Link>
+                <Link className="nav-link" to="/contact">
                   Contact
-                </button>
-                <button
-                  className="nav-link btn btn-link"
-                  onClick={() => scrollToSection("example")}
-                >
+                </Link>
+                <Link className="nav-link" to="/example">
                   Example
-                </button>
+                </Link>
               </div>
               <button
                 className="btn btn-primary go-to-app-btn"
@@ -81,7 +68,7 @@ function Header() {
             </>
           )}
 
-          {!isLandingPage && user && (
+          {!isPublicPage && user && (
             <div className="navbar-links">
               <Link className="nav-link" to="/generator">
                 Image Generator
@@ -95,7 +82,7 @@ function Header() {
             </div>
           )}
 
-          {!isLandingPage && !user && (
+          {!isPublicPage && !user && (
             <div className="navbar-links">
               <Link className="nav-link" to="/login">
                 Login
