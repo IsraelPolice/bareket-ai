@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const Replicate = require("replicate");
-require("dotenv").config({ path: __dirname + "/.env" }); // הגדרה מפורשת של מיקום .env
+require("dotenv").config({ path: __dirname + "/.env" });
 
 const app = express();
 app.use(cors());
@@ -12,7 +12,7 @@ console.log("Loading environment variables...");
 const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
 if (!REPLICATE_API_TOKEN) {
   console.error("ERROR: REPLICATE_API_TOKEN is not set in .env");
-  process.exit(1); // עצור את השרת אם אין Token
+  process.exit(1);
 } else {
   console.log("Full REPLICATE_API_TOKEN is loaded successfully.");
 }
@@ -41,7 +41,7 @@ async function testReplicateAuth() {
   }
 }
 
-// המתנה לאימות לפני הפעלת השרת
+// הגדרת נתיבי ה-API
 async function startServer() {
   const isAuthenticated = await testReplicateAuth();
   if (!isAuthenticated) {
@@ -49,7 +49,7 @@ async function startServer() {
     process.exit(1);
   }
 
-  // הגדרת נתיבי ה-API
+  // נתיב ליצירת תמונה (קיים כבר)
   app.post("/generate-image", async (req, res) => {
     try {
       const { prompt } = req.body;
@@ -77,9 +77,8 @@ async function startServer() {
       let imageUrl = "";
       if (Array.isArray(output) && output.length > 0) {
         if (typeof output[0] === "string" && output[0].startsWith("http")) {
-          imageUrl = output[0]; // URL ישיר
+          imageUrl = output[0];
         } else if (output[0] instanceof ReadableStream) {
-          // טיפול ב-ReadableStream
           const chunks = [];
           for await (const chunk of output[0]) {
             chunks.push(chunk);
@@ -102,6 +101,51 @@ async function startServer() {
       res.json({ image: imageUrl });
     } catch (error) {
       console.error("Error in generate-image:", error.message, error.stack);
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
+    }
+  });
+
+  // נתיב חדש ליצירת וידאו
+  app.post("/generate-video", async (req, res) => {
+    try {
+      const { prompt, start_image } = req.body;
+      console.log(
+        "Received video prompt:",
+        prompt,
+        "Start image:",
+        start_image
+      );
+      if (!prompt) {
+        return res.status(400).json({ error: "Prompt is required" });
+      }
+
+      const model = "kwaivgi/kling-v1.6-standard";
+      console.log("Running Replicate with video model:", model);
+      const output = await replicate.run(model, {
+        input: {
+          prompt: prompt,
+          start_image:
+            start_image ||
+            "https://replicate.delivery/pbxt/MNRKHnYUu5HjNqEerj2kxWRmUD3xWGaZ0gJmhqVbkra2jCbD/underwater.jpeg", // תמונת ברירת מחדל
+        },
+      });
+
+      console.log(
+        "Replicate video output (raw):",
+        JSON.stringify(output, null, 2)
+      );
+      if (typeof output === "string" && output.startsWith("http")) {
+        res.json({ video: output });
+      } else {
+        console.error("Unexpected Replicate video output format:", output);
+        return res
+          .status(500)
+          .json({ error: "Unexpected Replicate video output format" });
+      }
+    } catch (error) {
+      console.error("Error in generate-video:", error.message, error.stack);
       res
         .status(500)
         .json({ error: "Internal server error", details: error.message });

@@ -57,7 +57,7 @@ const AppRoutes = () => {
         }
       />
       <Route
-        path="/Vgenerator"
+        path="/video-generator"
         element={
           <ProtectedRoute>
             <VideoGenerator />
