@@ -6,68 +6,118 @@ import {
   reauthenticateWithCredential,
   updatePassword,
 } from "firebase/auth";
+import "../styles/MyAccountStyles.css";
 
 const AdminPanel = () => {
-  const [previousImages, setPreviousImages] = useState([]);
-  const [activeSection, setActiveSection] = useState("previousImages");
+  const [previousPrompts, setPreviousPrompts] = useState([]); // Combine images and videos
+  const [activeSection, setActiveSection] = useState("previousPrompts");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [currentPassword, setCurrentPassword] = useState(""); // הוספנו שדה לסיסמה הנוכחית
+  const [currentPassword, setCurrentPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    const fetchImages = async () => {
+    const fetchPrompts = async () => {
       const user = auth.currentUser;
       if (user) {
         const userId = user.uid;
+        // Fetch images and videos
         const imagesRef = doc(db, "users", userId, "images", "list");
+        const videosRef = doc(db, "users", userId, "videos", "list");
         try {
-          const imagesSnap = await getDoc(imagesRef);
+          const [imagesSnap, videosSnap] = await Promise.all([
+            getDoc(imagesRef),
+            getDoc(videosRef),
+          ]);
+
+          let prompts = [];
+
+          // Combine images
           if (imagesSnap.exists()) {
             const imagesData = imagesSnap.data().list || [];
-            setPreviousImages(imagesData);
+            prompts = [
+              ...prompts,
+              ...imagesData.map((item) => ({ ...item, type: "image" })),
+            ];
           } else {
             await setDoc(imagesRef, { list: [] }, { merge: true });
-            setPreviousImages([]);
           }
+
+          // Combine videos
+          if (videosSnap.exists()) {
+            const videosData = videosSnap.data().list || [];
+            prompts = [
+              ...prompts,
+              ...videosData.map((item) => ({ ...item, type: "video" })),
+            ];
+          } else {
+            await setDoc(videosRef, { list: [] }, { merge: true });
+          }
+
+          // Sort by timestamp if available
+          prompts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          setPreviousPrompts(prompts);
         } catch (err) {
-          setError("Failed to fetch images: " + err.message);
+          setError("Failed to fetch prompts: " + err.message);
         }
       } else {
-        setError("Please sign in to access your images.");
+        setError("Please sign in to access your prompts.");
       }
     };
-    fetchImages();
+    fetchPrompts();
   }, []);
 
-  const deleteImage = async (index) => {
+  const deletePrompt = async (index) => {
     const user = auth.currentUser;
     if (user) {
       const userId = user.uid;
-      const updatedImages = previousImages.filter((_, i) => i !== index);
-      setPreviousImages(updatedImages);
-      const imagesRef = doc(db, "users", userId, "images", "list");
+      const promptToDelete = previousPrompts[index];
+      const updatedPrompts = previousPrompts.filter((_, i) => i !== index);
+      setPreviousPrompts(updatedPrompts);
+
       try {
-        await updateDoc(imagesRef, { list: updatedImages });
+        if (promptToDelete.type === "image") {
+          const imagesRef = doc(db, "users", userId, "images", "list");
+          const imagesSnap = await getDoc(imagesRef);
+          if (imagesSnap.exists()) {
+            const imagesData = imagesSnap.data().list || [];
+            const updatedImages = imagesData.filter(
+              (item) => item.src !== promptToDelete.src
+            );
+            await updateDoc(imagesRef, { list: updatedImages });
+          }
+        } else if (promptToDelete.type === "video") {
+          const videosRef = doc(db, "users", userId, "videos", "list");
+          const videosSnap = await getDoc(videosRef);
+          if (videosSnap.exists()) {
+            const videosData = videosSnap.data().list || [];
+            const updatedVideos = videosData.filter(
+              (item) => item.src !== promptToDelete.src
+            );
+            await updateDoc(videosRef, { list: updatedVideos });
+          }
+        }
       } catch (err) {
-        setError("Failed to delete image: " + err.message);
+        setError("Failed to delete prompt: " + err.message);
       }
     } else {
-      setError("Please sign in to delete images.");
+      setError("Please sign in to delete prompts.");
     }
   };
 
-  const downloadImage = (img, alt) => {
-    if (img && img.src) {
+  const downloadPrompt = (prompt, alt) => {
+    if (prompt && prompt.src) {
       const link = document.createElement("a");
-      link.href = img.src;
-      link.download = `${alt || "image"}-${Date.now()}.png`;
+      link.href = prompt.src;
+      link.download = `${alt || "prompt"}-${Date.now()}.${
+        prompt.type === "video" ? "mp4" : "png"
+      }`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } else {
-      setError("Image source is missing.");
+      setError("Prompt source is missing.");
     }
   };
 
@@ -120,145 +170,143 @@ const AdminPanel = () => {
   };
 
   return (
-    <div className="container mt-5">
-      <h1 className="text-center mb-4">Admin Panel</h1>
-      <div className="row">
-        <div className="col-md-3">
-          <nav className="nav flex-column">
-            <button
-              className={`nav-link btn ${
-                activeSection === "changePassword"
-                  ? "btn-primary"
-                  : "btn-outline-primary"
-              } mb-2`}
-              onClick={() => setActiveSection("changePassword")}
-            >
-              Change Password
-            </button>
-            <button
-              className={`nav-link btn ${
-                activeSection === "previousImages"
-                  ? "btn-primary"
-                  : "btn-outline-primary"
-              } mb-2`}
-              onClick={() => setActiveSection("previousImages")}
-            >
-              Previous Images
-            </button>
-            <button
-              className={`nav-link btn ${
-                activeSection === "paymentDetails"
-                  ? "btn-primary"
-                  : "btn-outline-primary"
-              } mb-2`}
-              onClick={() => setActiveSection("paymentDetails")}
-            >
-              Payment Details
-            </button>
-          </nav>
-        </div>
-        <div className="col-md-9">
-          {activeSection === "changePassword" && (
-            <div>
-              <h2 className="mb-4">Change Password</h2>
-              {error && <div className="alert alert-danger">{error}</div>}
-              {success && <div className="alert alert-success">{success}</div>}
-              <form onSubmit={handleChangePassword}>
-                <div className="mb-3">
-                  <label htmlFor="currentPassword" className="form-label">
-                    Current Password
-                  </label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    id="currentPassword"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="password" className="form-label">
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    id="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="confirmPassword" className="form-label">
-                    Confirm New Password
-                  </label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    id="confirmPassword"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <button type="submit" className="btn btn-primary w-100">
-                  Update Password
-                </button>
-              </form>
-            </div>
-          )}
-          {activeSection === "previousImages" && (
-            <div>
-              <h2 className="mb-4">Previous Images</h2>
-              {previousImages.length > 0 ? (
-                <div className="row">
-                  {previousImages.map((img, index) => (
-                    <div key={index} className="col-md-4 mb-3">
-                      <div className="card">
-                        {img.src ? (
-                          <img
-                            src={img.src}
-                            alt={img.alt || "Image"}
-                            className="card-img-top"
-                          />
-                        ) : (
-                          <p className="text-center p-3">Image not available</p>
-                        )}
-                        <div className="card-body">
-                          <p className="card-text">
-                            {img.alt || "No description"}
-                          </p>
-                          <button
-                            className="btn btn-danger me-2"
-                            onClick={() => deleteImage(index)}
-                          >
-                            Delete
-                          </button>
-                          <button
-                            className="btn btn-secondary"
-                            onClick={() => downloadImage(img, img.alt)}
-                          >
-                            Download
-                          </button>
-                        </div>
+    <div className="my-account-wrapper">
+      <div className="sidebar">
+        <h1 className="my-account-title">My Account</h1>
+        <nav className="nav flex-column">
+          <button
+            className={`nav-link ${
+              activeSection === "changePassword" ? "active" : ""
+            }`}
+            onClick={() => setActiveSection("changePassword")}
+          >
+            Change Password
+          </button>
+          <button
+            className={`nav-link ${
+              activeSection === "previousPrompts" ? "active" : ""
+            }`}
+            onClick={() => setActiveSection("previousPrompts")}
+          >
+            Previous Prompts
+          </button>
+          <button
+            className={`nav-link ${
+              activeSection === "myPayments" ? "active" : ""
+            }`}
+            onClick={() => setActiveSection("myPayments")}
+          >
+            My Payments
+          </button>
+          <button
+            className={`nav-link ${
+              activeSection === "buyCredits" ? "active" : ""
+            }`}
+            onClick={() => setActiveSection("buyCredits")}
+          >
+            Buy Credits
+          </button>
+        </nav>
+      </div>
+      <div className="main-content">
+        {activeSection === "changePassword" && (
+          <div className="section-content">
+            <h2>Change Password</h2>
+            {error && <div className="error-message">{error}</div>}
+            {success && <div className="success-message">{success}</div>}
+            <form onSubmit={handleChangePassword}>
+              <div className="input-group">
+                <label htmlFor="currentPassword">Current Password</label>
+                <input
+                  type="password"
+                  id="currentPassword"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="input-group">
+                <label htmlFor="password">New Password</label>
+                <input
+                  type="password"
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="input-group">
+                <label htmlFor="confirmPassword">Confirm New Password</label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <button type="submit" className="submit-btn">
+                Update Password
+              </button>
+            </form>
+          </div>
+        )}
+        {activeSection === "previousPrompts" && (
+          <div className="section-content">
+            <h2>Previous Prompts</h2>
+            {previousPrompts.length > 0 ? (
+              <div className="media-grid">
+                {previousPrompts.map((prompt, index) => (
+                  <div key={index} className="media-item">
+                    {prompt.type === "image" ? (
+                      <img
+                        src={prompt.src}
+                        alt={prompt.alt || "Image"}
+                        className="media-preview"
+                      />
+                    ) : (
+                      <video controls className="media-preview">
+                        <source src={prompt.src} type="video/mp4" />
+                        Your browser does not support the video tag.
+                      </video>
+                    )}
+                    <div className="media-details">
+                      <p>{prompt.alt || "No description"}</p>
+                      <div className="media-actions">
+                        <button
+                          className="delete-btn"
+                          onClick={() => deletePrompt(index)}
+                        >
+                          Delete
+                        </button>
+                        <button
+                          className="download-btn"
+                          onClick={() => downloadPrompt(prompt, prompt.alt)}
+                        >
+                          Download
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center">No previous images to display.</p>
-              )}
-            </div>
-          )}
-          {activeSection === "paymentDetails" && (
-            <div>
-              <h2 className="mb-4">Payment Details</h2>
-              <p className="text-center">Payment integration coming soon.</p>
-            </div>
-          )}
-        </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="no-content">No previous prompts to display.</p>
+            )}
+          </div>
+        )}
+        {activeSection === "myPayments" && (
+          <div className="section-content">
+            <h2>My Payments</h2>
+            <p className="no-content">Payment integration coming soon.</p>
+          </div>
+        )}
+        {activeSection === "buyCredits" && (
+          <div className="section-content">
+            <h2>Buy Credits</h2>
+            <p className="no-content">Credit purchase options coming soon.</p>
+          </div>
+        )}
       </div>
     </div>
   );

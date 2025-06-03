@@ -77,7 +77,7 @@ function Header() {
                 Video Generator
               </Link>
               <Link className="nav-link" to="/admin">
-                Admin Panel
+                My Account
               </Link>
               <button className="btn btn-link nav-link" onClick={handleLogout}>
                 Logout
