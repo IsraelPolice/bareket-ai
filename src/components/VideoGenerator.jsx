@@ -1,29 +1,31 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { auth, db, storage } from "./firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import "../styles/GeneratorStyles.css";
 
 const VideoGenerator = () => {
-  // State for video generation parameters
+  const [model, setModel] = useState("kwaivgi/kling-v1.6-standard");
   const [prompt, setPrompt] = useState(
     "a portrait photo of a woman underwater with flowing hair"
   );
   const [negativePrompt, setNegativePrompt] = useState("");
   const [aspectRatio, setAspectRatio] = useState("16:9");
   const [startImage, setStartImage] = useState("");
+  const [endImage, setEndImage] = useState("");
   const [referenceImages, setReferenceImages] = useState([]);
   const [cfgScale, setCfgScale] = useState(0.5);
   const [duration, setDuration] = useState(5);
-
-  // State for UI and data
   const [currentVideo, setCurrentVideo] = useState("");
   const [error, setError] = useState("");
   const [previousVideos, setPreviousVideos] = useState([]);
   const [credits, setCredits] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Fetch user data on component mount
+  const startRef = useRef(null);
+  const endRef = useRef(null);
+  const refImagesRef = useRef(null);
+
   useEffect(() => {
     const fetchUserData = async () => {
       const user = auth.currentUser;
@@ -32,42 +34,31 @@ const VideoGenerator = () => {
         return;
       }
       const userId = user.uid;
-      console.log("Current user UID:", userId);
       try {
         const creditsRef = doc(db, "users", userId, "credits", "current");
-        console.log("Fetching credits from:", creditsRef.path);
         const creditsSnap = await getDoc(creditsRef);
         if (creditsSnap.exists()) {
-          const currentCredits = creditsSnap.data().value;
-          setCredits(currentCredits);
-          console.log("Loaded credits:", currentCredits);
+          setCredits(creditsSnap.data().value);
         } else {
-          console.log("No credits found, initializing with 10");
           await setDoc(creditsRef, { value: 10 });
           setCredits(10);
         }
 
         const videosRef = doc(db, "users", userId, "videos", "list");
-        console.log("Fetching videos from:", videosRef.path);
         const videosSnap = await getDoc(videosRef);
         if (videosSnap.exists()) {
-          const videosData = videosSnap.data().list || [];
-          setPreviousVideos(videosData);
-          console.log("Loaded previous videos:", videosData);
+          setPreviousVideos(videosSnap.data().list || []);
         } else {
-          console.log("No videos found, initializing empty list");
           await setDoc(videosRef, { list: [] }, { merge: true });
           setPreviousVideos([]);
         }
       } catch (err) {
         setError("Error fetching user data: " + err.message);
-        console.error("Firestore error:", err);
       }
     };
     fetchUserData();
   }, []);
 
-  // Function to generate video
   const generateVideo = async () => {
     if (!prompt.trim()) {
       setError("Please enter a prompt!");
@@ -78,8 +69,11 @@ const VideoGenerator = () => {
       setError("Please sign in to generate videos.");
       return;
     }
-    if (credits === null || credits <= 0) {
-      setError("No credits left or data not loaded! Please recharge or wait.");
+    const creditCost = model === "kwaivgi/kling-v1.6-pro" ? 2 : 1;
+    const durationCost = duration === 10 ? 2 : 1;
+    const totalCost = creditCost * durationCost;
+    if (credits === null || credits < totalCost) {
+      setError(`Not enough credits! Requires ${totalCost} credits.`);
       return;
     }
     setLoading(true);
@@ -90,10 +84,12 @@ const VideoGenerator = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          model,
           prompt,
           negative_prompt: negativePrompt,
           aspect_ratio: aspectRatio,
           start_image: startImage,
+          end_image: endImage,
           reference_images: referenceImages,
           cfg_scale: cfgScale,
           duration,
@@ -101,7 +97,6 @@ const VideoGenerator = () => {
       });
       if (!response.ok) throw new Error("Error generating video. Try again!");
       const data = await response.json();
-      console.log("Replicate video response:", data);
       const videoUrl = data.video;
 
       const videoResponse = await fetch(videoUrl);
@@ -112,14 +107,12 @@ const VideoGenerator = () => {
         storage,
         `users/${userId}/videos/${Date.now()}.mp4`
       );
-      console.log("Uploading to Storage:", storageRef.fullPath);
       await uploadBytes(storageRef, videoBlob);
       const savedVideoUrl = await getDownloadURL(storageRef);
-      console.log("Generated video URL:", savedVideoUrl);
 
       setCurrentVideo(savedVideoUrl);
 
-      const newCredits = credits - 1;
+      const newCredits = credits - totalCost;
       setCredits(newCredits);
       const creditsRef = doc(db, "users", userId, "credits", "current");
       await setDoc(creditsRef, { value: newCredits });
@@ -135,13 +128,11 @@ const VideoGenerator = () => {
       await setDoc(videosRef, { list: updatedVideos }, { merge: true });
     } catch (error) {
       setError(`Error generating video: ${error.message}`);
-      console.error("Error details:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Function to recharge credits
   const rechargeCredits = async () => {
     const user = auth.currentUser;
     if (!user) {
@@ -157,10 +148,31 @@ const VideoGenerator = () => {
     alert("Credits recharged! +10 credits.");
   };
 
-  // JSX rendering
+  const handleFileUpload = (e, setter) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setter(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e, setter) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = () => setter(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="generator-wrapper">
-      {/* Sidebar for inputs */}
       <div className="sidebar">
         <h2>Saturn AI Video Generator</h2>
         <div className="credits-section">
@@ -173,8 +185,21 @@ const VideoGenerator = () => {
             Recharge (+10)
           </button>
         </div>
-
-        {/* Prompt Input */}
+        <div className="input-group">
+          <label>Model</label>
+          <select
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            disabled={credits === null || credits <= 0}
+          >
+            <option value="kwaivgi/kling-v1.6-standard">
+              Kling 1.6 Standard (1 credit)
+            </option>
+            <option value="kwaivgi/kling-v1.6-pro">
+              Kling 1.6 Pro (2 credits)
+            </option>
+          </select>
+        </div>
         <div className="input-group">
           <label>Prompt</label>
           <textarea
@@ -184,8 +209,6 @@ const VideoGenerator = () => {
             disabled={credits === null || credits <= 0}
           />
         </div>
-
-        {/* Negative Prompt */}
         <div className="input-group">
           <label>Negative Prompt</label>
           <textarea
@@ -195,8 +218,6 @@ const VideoGenerator = () => {
             disabled={credits === null || credits <= 0}
           />
         </div>
-
-        {/* Aspect Ratio */}
         <div className="input-group">
           <label>Aspect Ratio</label>
           <select
@@ -205,40 +226,127 @@ const VideoGenerator = () => {
             disabled={credits === null || credits <= 0}
           >
             <option value="16:9">16:9</option>
-            <option value="4:4">4:3</option>
+            <option value="4:3">4:3</option>
             <option value="1:1">1:1</option>
           </select>
         </div>
-
-        {/* Start Image URL */}
         <div className="input-group">
-          <label>Start Image URL</label>
-          <input
-            type="text"
-            value={startImage}
-            onChange={(e) => setStartImage(e.target.value)}
-            placeholder="Enter start image URL (optional)"
-            disabled={credits === null || credits <= 0}
-          />
+          <label>Start Image</label>
+          <div
+            ref={startRef}
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, setStartImage)}
+            style={{
+              border: "2px dashed var(--border-color)",
+              padding: "10px",
+              textAlign: "center",
+              borderRadius: "6px",
+              backgroundColor: startImage ? "var(--input-bg)" : "transparent",
+            }}
+          >
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => handleFileUpload(e, setStartImage)}
+              style={{ display: "none" }}
+              id="start-upload"
+            />
+            <label htmlFor="start-upload" style={{ cursor: "pointer" }}>
+              {startImage ? "Image loaded" : "Click / Drop / Paste"}
+            </label>
+          </div>
         </div>
-
-        {/* Reference Images */}
         <div className="input-group">
-          <label>Reference Images (URLs, comma-separated)</label>
-          <input
-            type="text"
-            value={referenceImages.join(",")}
-            onChange={(e) =>
-              setReferenceImages(
-                e.target.value.split(",").map((url) => url.trim())
-              )
-            }
-            placeholder="Enter reference image URLs (e.g., 'url1,url2')"
-            disabled={credits === null || credits <= 0}
-          />
+          <label>End Image</label>
+          <div
+            ref={endRef}
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, setEndImage)}
+            style={{
+              border: "2px dashed var(--border-color)",
+              padding: "10px",
+              textAlign: "center",
+              borderRadius: "6px",
+              backgroundColor: endImage ? "var(--input-bg)" : "transparent",
+            }}
+          >
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => handleFileUpload(e, setEndImage)}
+              style={{ display: "none" }}
+              id="end-upload"
+            />
+            <label htmlFor="end-upload" style={{ cursor: "pointer" }}>
+              {endImage ? "Image loaded" : "Click / Drop / Paste"}
+            </label>
+          </div>
         </div>
-
-        {/* CFG Scale */}
+        <div className="input-group">
+          <label>Reference Images (up to 4)</label>
+          <div
+            ref={refImagesRef}
+            onDragOver={handleDragOver}
+            onDrop={(e) => {
+              e.preventDefault();
+              const files = Array.from(e.dataTransfer.files).slice(
+                0,
+                4 - referenceImages.length
+              );
+              const readers = files.map((file) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                return new Promise(
+                  (resolve) => (reader.onloadend = () => resolve(reader.result))
+                );
+              });
+              Promise.all(readers).then((results) =>
+                setReferenceImages([...referenceImages, ...results].slice(0, 4))
+              );
+            }}
+            style={{
+              border: "2px dashed var(--border-color)",
+              padding: "10px",
+              textAlign: "center",
+              borderRadius: "6px",
+              backgroundColor: referenceImages.length
+                ? "var(--input-bg)"
+                : "transparent",
+            }}
+          >
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => {
+                const files = Array.from(e.target.files).slice(
+                  0,
+                  4 - referenceImages.length
+                );
+                const readers = files.map((file) => {
+                  const reader = new FileReader();
+                  reader.readAsDataURL(file);
+                  return new Promise(
+                    (resolve) =>
+                      (reader.onloadend = () => resolve(reader.result))
+                  );
+                });
+                Promise.all(readers).then((results) =>
+                  setReferenceImages(
+                    [...referenceImages, ...results].slice(0, 4)
+                  )
+                );
+              }}
+              style={{ display: "none" }}
+              id="ref-upload"
+            />
+            <label htmlFor="ref-upload" style={{ cursor: "pointer" }}>
+              {referenceImages.length
+                ? `${referenceImages.length} images loaded`
+                : "Click / Drop / Paste"}
+            </label>
+          </div>
+        </div>
         <div className="input-group">
           <label>CFG Scale (0-1)</label>
           <input
@@ -253,20 +361,17 @@ const VideoGenerator = () => {
             disabled={credits === null || credits <= 0}
           />
         </div>
-
-        {/* Duration */}
         <div className="input-group">
           <label>Duration (seconds)</label>
-          <input
-            type="number"
+          <select
             value={duration}
-            onChange={(e) => setDuration(Math.max(1, e.target.value))}
-            min="1"
+            onChange={(e) => setDuration(Number(e.target.value))}
             disabled={credits === null || credits <= 0}
-          />
+          >
+            <option value="5">5s (1 credit)</option>
+            <option value="10">10s (2 credits)</option>
+          </select>
         </div>
-
-        {/* Generate Button */}
         <button
           onClick={generateVideo}
           className="generate-btn"
@@ -274,14 +379,9 @@ const VideoGenerator = () => {
         >
           Generate Video
         </button>
-
-        {/* Error Message */}
         {error && <div className="error-message">{error}</div>}
       </div>
-
-      {/* Main Content Area */}
       <div className="main-content">
-        {/* Preview Section */}
         <div className="preview-section">
           {loading && <p className="loading-text">Generating...</p>}
           {currentVideo && !loading && (
@@ -291,8 +391,6 @@ const VideoGenerator = () => {
             </video>
           )}
         </div>
-
-        {/* Previous Videos Section */}
         <div className="previous-section">
           <h2>Previous Videos</h2>
           <div className="media-grid">

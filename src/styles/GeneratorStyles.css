@@ -8,6 +8,8 @@
   --button-bg: #4a90e2; /* Primary button */
   --button-hover: #5aa0f2; /* Button hover */
   --error-bg: #e63946; /* Error alert */
+  --scrollbar-thumb: #4a90e2; /* Color of scrollbar thumb */
+  --scrollbar-track: #2f3b4c; /* Color of scrollbar track */
 }
 
 html,
@@ -34,10 +36,36 @@ body {
   background-color: var(--sidebar-bg);
   padding: 20px;
   height: 100vh; /* Full height */
-  overflow: hidden; /* No scrolling */
+  overflow-y: auto; /* Enable vertical scrolling */
   border-right: 1px solid var(--border-color);
   box-sizing: border-box; /* Ensures padding doesn't affect width */
   flex-shrink: 0; /* Prevents sidebar from shrinking */
+  display: flex;
+  flex-direction: column;
+  /* Ensure content can grow to enable scrolling */
+  & > * {
+    flex-shrink: 0; /* Prevent elements from shrinking */
+  }
+  /* Increased padding to ensure button visibility */
+  padding-bottom: 80px;
+  /* Custom scrollbar styles */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--button-hover);
+  }
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 .main-content {
@@ -96,6 +124,10 @@ body {
   font-size: 16px;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  /* Sticky button at the bottom */
+  position: sticky;
+  bottom: 20px;
+  margin-top: auto; /* Pushes button to bottom */
 }
 
 .generate-btn:hover {
@@ -180,4 +212,9 @@ body {
   color: var(--text-color);
   text-align: center;
   font-style: italic;
+}
+
+/* Add margin between image sections */
+.input-group + .input-group {
+  margin-top: 10px;
 }

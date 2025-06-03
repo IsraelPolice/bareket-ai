@@ -52,16 +52,18 @@ async function startServer() {
   // נתיב ליצירת תמונה
   app.post("/generate-image", async (req, res) => {
     try {
-      const { prompt } = req.body;
-      console.log("Received prompt:", prompt);
+      const { prompt, model } = req.body;
+      console.log("Received prompt:", prompt, "Model:", model);
       if (!prompt) {
         return res.status(400).json({ error: "Prompt is required" });
       }
 
-      const model =
-        "stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc";
-      console.log("Running Replicate with model:", model);
-      const output = await replicate.run(model, {
+      const modelId =
+        model === "pro"
+          ? "pro-model-id"
+          : "stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc";
+      console.log("Running Replicate with model:", modelId);
+      const output = await replicate.run(modelId, {
         input: {
           prompt: prompt,
           width: 768,
@@ -111,19 +113,23 @@ async function startServer() {
   app.post("/generate-video", async (req, res) => {
     try {
       const {
+        model,
         prompt,
         negative_prompt,
         aspect_ratio,
         start_image,
+        end_image,
         reference_images,
         cfg_scale,
         duration,
       } = req.body;
       console.log("Received video params:", {
+        model,
         prompt,
         negative_prompt,
         aspect_ratio,
         start_image,
+        end_image,
         reference_images,
         cfg_scale,
         duration,
@@ -131,20 +137,29 @@ async function startServer() {
       if (!prompt) {
         return res.status(400).json({ error: "Prompt is required" });
       }
+      if (!duration || ![5, 10].includes(parseInt(duration))) {
+        return res
+          .status(400)
+          .json({ error: "Duration must be 5 or 10 seconds" });
+      }
 
-      const model = "kwaivgi/kling-v1.6-standard";
-      console.log("Running Replicate with video model:", model);
-      const output = await replicate.run(model, {
+      const modelId =
+        model === "kwaivgi/kling-v1.6-pro"
+          ? "kwaivgi/kling-v1.6-pro"
+          : "kwaivgi/kling-v1.6-standard";
+      console.log("Running Replicate with video model:", modelId);
+      const output = await replicate.run(modelId, {
         input: {
           prompt,
           negative_prompt: negative_prompt || "",
-          aspect_ratio: start_image ? undefined : aspect_ratio || "16:9", // Ignored if start_image is provided
+          aspect_ratio: start_image ? undefined : aspect_ratio || "16:9",
           start_image:
             start_image ||
             "https://replicate.delivery/pbxt/MNRKHnYUu5HjNqEerj2kxWRmUD3xWGaZ0gJmhqVbkra2jCbD/underwater.jpeg",
+          end_image: end_image,
           reference_images: reference_images || [],
-          cfg_scale: cfg_scale || 0.5,
-          duration: duration || 5,
+          cfg_scale: parseFloat(cfg_scale) || 0.5,
+          duration: parseInt(duration),
         },
       });
 
