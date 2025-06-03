@@ -136,35 +136,39 @@ const ImageGenerator = () => {
   return (
     <div className="generator-wrapper">
       <div className="sidebar">
-        <h2>Saturn AI Image Generator</h2>
-        <div className="credits-section">
-          <span>Credits: {credits !== null ? credits : "Loading..."}</span>
+        <div className="sidebar-content">
+          <h2>Saturn AI Image Generator</h2>
+          <div className="credits-section">
+            <span>Credits: {credits !== null ? credits : "Loading..."}</span>
+            <button
+              className="recharge-btn"
+              onClick={rechargeCredits}
+              disabled={loading || credits === null}
+            >
+              Recharge (+10)
+            </button>
+          </div>
+          <div className="input-group">
+            <label>Prompt</label>
+            <input
+              type="text"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Enter a prompt (e.g., 'sun')"
+              disabled={credits === null || credits <= 0}
+            />
+          </div>
+          {error && <div className="error-message">{error}</div>}
+        </div>
+        <div className="generate-btn-container">
           <button
-            className="recharge-btn"
-            onClick={rechargeCredits}
-            disabled={loading || credits === null}
+            onClick={generateImage}
+            className="generate-btn"
+            disabled={loading || credits === null || credits <= 0}
           >
-            Recharge (+10)
+            Generate Image
           </button>
         </div>
-        <div className="input-group">
-          <label>Prompt</label>
-          <input
-            type="text"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Enter a prompt (e.g., 'sun')"
-            disabled={credits === null || credits <= 0}
-          />
-        </div>
-        <button
-          onClick={generateImage}
-          className="generate-btn"
-          disabled={loading || credits === null || credits <= 0}
-        >
-          Generate Image
-        </button>
-        {error && <div className="error-message">{error}</div>}
       </div>
       <div className="main-content">
         <div className="preview-section">

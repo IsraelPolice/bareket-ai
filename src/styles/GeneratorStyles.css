@@ -34,20 +34,20 @@ body {
 .sidebar {
   width: 300px;
   background-color: var(--sidebar-bg);
-  padding: 20px;
   height: 100vh; /* Full height */
-  overflow-y: auto; /* Enable vertical scrolling */
   border-right: 1px solid var(--border-color);
   box-sizing: border-box; /* Ensures padding doesn't affect width */
   flex-shrink: 0; /* Prevents sidebar from shrinking */
   display: flex;
   flex-direction: column;
-  /* Ensure content can grow to enable scrolling */
-  & > * {
-    flex-shrink: 0; /* Prevent elements from shrinking */
-  }
-  /* Increased padding to ensure button visibility */
-  padding-bottom: 80px;
+  position: relative; /* For positioning context */
+}
+
+.sidebar-content {
+  flex: 1; /* Take up remaining space */
+  overflow-y: auto; /* Enable scrolling */
+  padding: 20px;
+  padding-bottom: 80px; /* Space for generate-btn-container */
   /* Custom scrollbar styles */
   &::-webkit-scrollbar {
     width: 8px;
@@ -68,11 +68,21 @@ body {
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
+.generate-btn-container {
+  padding: 20px;
+  background-color: var(--sidebar-bg); /* Match sidebar background */
+  border-top: 1px solid var(--border-color); /* Subtle separator */
+  position: sticky;
+  bottom: 0;
+  z-index: 10; /* Ensure it stays above content */
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
 .main-content {
   padding: 20px;
   width: calc(100% - 300px); /* Adjusted to match sidebar width */
   height: 100vh; /* Full height */
-  overflow: hidden; /* No scrolling */
+  overflow-y: auto; /* Enable scrolling for main content */
   box-sizing: border-box;
   background-color: var(--primary-bg); /* Ensures background consistency */
 }
@@ -124,14 +134,15 @@ body {
   font-size: 16px;
   cursor: pointer;
   transition: background-color 0.3s ease;
-  /* Sticky button at the bottom */
-  position: sticky;
-  bottom: 20px;
-  margin-top: auto; /* Pushes button to bottom */
 }
 
 .generate-btn:hover {
   background-color: var(--button-hover);
+}
+
+.generate-btn:disabled {
+  background-color: #3e4b5b; /* Disabled state */
+  cursor: not-allowed;
 }
 
 .credits-section {
@@ -157,6 +168,11 @@ body {
 
 .recharge-btn:hover {
   background-color: #2ecc71;
+}
+
+.recharge-btn:disabled {
+  background-color: #3e4b5b; /* Disabled state */
+  cursor: not-allowed;
 }
 
 .error-message {
@@ -197,15 +213,11 @@ body {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
-.media-item img {
-  width: 100%;
-  height: auto;
-  object-fit: cover;
-}
-
+.media-item img,
 .media-item video {
   width: 100%;
   height: auto;
+  object-fit: cover;
 }
 
 .loading-text {
@@ -217,4 +229,31 @@ body {
 /* Add margin between image sections */
 .input-group + .input-group {
   margin-top: 10px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .generator-wrapper {
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+  }
+
+  .sidebar-content {
+    padding-bottom: 100px; /* More space on mobile */
+  }
+
+  .generate-btn-container {
+    padding: 10px;
+  }
+
+  .main-content {
+    width: 100%;
+    height: auto;
+    overflow-y: auto;
+  }
 }

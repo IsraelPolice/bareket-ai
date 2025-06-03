@@ -174,152 +174,123 @@ const VideoGenerator = () => {
   return (
     <div className="generator-wrapper">
       <div className="sidebar">
-        <h2>Saturn AI Video Generator</h2>
-        <div className="credits-section">
-          <span>Credits: {credits !== null ? credits : "Loading..."}</span>
-          <button
-            className="recharge-btn"
-            onClick={rechargeCredits}
-            disabled={loading || credits === null}
-          >
-            Recharge (+10)
-          </button>
-        </div>
-        <div className="input-group">
-          <label>Model</label>
-          <select
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            disabled={credits === null || credits <= 0}
-          >
-            <option value="kwaivgi/kling-v1.6-standard">
-              Kling 1.6 Standard (1 credit)
-            </option>
-            <option value="kwaivgi/kling-v1.6-pro">
-              Kling 1.6 Pro (2 credits)
-            </option>
-          </select>
-        </div>
-        <div className="input-group">
-          <label>Prompt</label>
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Enter a prompt (e.g., 'a woman underwater with flowing hair')"
-            disabled={credits === null || credits <= 0}
-          />
-        </div>
-        <div className="input-group">
-          <label>Negative Prompt</label>
-          <textarea
-            value={negativePrompt}
-            onChange={(e) => setNegativePrompt(e.target.value)}
-            placeholder="Things you don't want (e.g., 'blurry')"
-            disabled={credits === null || credits <= 0}
-          />
-        </div>
-        <div className="input-group">
-          <label>Aspect Ratio</label>
-          <select
-            value={aspectRatio}
-            onChange={(e) => setAspectRatio(e.target.value)}
-            disabled={credits === null || credits <= 0}
-          >
-            <option value="16:9">16:9</option>
-            <option value="4:3">4:3</option>
-            <option value="1:1">1:1</option>
-          </select>
-        </div>
-        <div className="input-group">
-          <label>Start Image</label>
-          <div
-            ref={startRef}
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, setStartImage)}
-            style={{
-              border: "2px dashed var(--border-color)",
-              padding: "10px",
-              textAlign: "center",
-              borderRadius: "6px",
-              backgroundColor: startImage ? "var(--input-bg)" : "transparent",
-            }}
-          >
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleFileUpload(e, setStartImage)}
-              style={{ display: "none" }}
-              id="start-upload"
-            />
-            <label htmlFor="start-upload" style={{ cursor: "pointer" }}>
-              {startImage ? "Image loaded" : "Click / Drop / Paste"}
-            </label>
+        <div className="sidebar-content">
+          <h2>Saturn AI Video Generator</h2>
+          <div className="credits-section">
+            <span>Credits: {credits !== null ? credits : "Loading..."}</span>
+            <button
+              className="recharge-btn"
+              onClick={rechargeCredits}
+              disabled={loading || credits === null}
+            >
+              Recharge (+10)
+            </button>
           </div>
-        </div>
-        <div className="input-group">
-          <label>End Image</label>
-          <div
-            ref={endRef}
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, setEndImage)}
-            style={{
-              border: "2px dashed var(--border-color)",
-              padding: "10px",
-              textAlign: "center",
-              borderRadius: "6px",
-              backgroundColor: endImage ? "var(--input-bg)" : "transparent",
-            }}
-          >
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleFileUpload(e, setEndImage)}
-              style={{ display: "none" }}
-              id="end-upload"
-            />
-            <label htmlFor="end-upload" style={{ cursor: "pointer" }}>
-              {endImage ? "Image loaded" : "Click / Drop / Paste"}
-            </label>
+          <div className="input-group">
+            <label>Model</label>
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              disabled={credits === null || credits <= 0}
+            >
+              <option value="kwaivgi/kling-v1.6-standard">
+                Kling 1.6 Standard (1 credit)
+              </option>
+              <option value="kwaivgi/kling-v1.6-pro">
+                Kling 1.6 Pro (2 credits)
+              </option>
+            </select>
           </div>
-        </div>
-        <div className="input-group">
-          <label>Reference Images (up to 4)</label>
-          <div
-            ref={refImagesRef}
-            onDragOver={handleDragOver}
-            onDrop={(e) => {
-              e.preventDefault();
-              const files = Array.from(e.dataTransfer.files).slice(
-                0,
-                4 - referenceImages.length
-              );
-              const readers = files.map((file) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                return new Promise(
-                  (resolve) => (reader.onloadend = () => resolve(reader.result))
-                );
-              });
-              Promise.all(readers).then((results) =>
-                setReferenceImages([...referenceImages, ...results].slice(0, 4))
-              );
-            }}
-            style={{
-              border: "2px dashed var(--border-color)",
-              padding: "10px",
-              textAlign: "center",
-              borderRadius: "6px",
-              backgroundColor: referenceImages.length
-                ? "var(--input-bg)"
-                : "transparent",
-            }}
-          >
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={(e) => {
-                const files = Array.from(e.target.files).slice(
+          <div className="input-group">
+            <label>Prompt</label>
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Enter a prompt (e.g., 'a woman underwater with flowing hair')"
+              disabled={credits === null || credits <= 0}
+            />
+          </div>
+          <div className="input-group">
+            <label>Negative Prompt</label>
+            <textarea
+              value={negativePrompt}
+              onChange={(e) => setNegativePrompt(e.target.value)}
+              placeholder="Things you don't want (e.g., 'blurry')"
+              disabled={credits === null || credits <= 0}
+            />
+          </div>
+          <div className="input-group">
+            <label>Aspect Ratio</label>
+            <select
+              value={aspectRatio}
+              onChange={(e) => setAspectRatio(e.target.value)}
+              disabled={credits === null || credits <= 0}
+            >
+              <option value="16:9">16:9</option>
+              <option value="4:3">4:3</option>
+              <option value="1:1">1:1</option>
+            </select>
+          </div>
+          <div className="input-group">
+            <label>Start Image</label>
+            <div
+              ref={startRef}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, setStartImage)}
+              style={{
+                border: "2px dashed var(--border-color)",
+                padding: "10px",
+                textAlign: "center",
+                borderRadius: "6px",
+                backgroundColor: startImage ? "var(--input-bg)" : "transparent",
+              }}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleFileUpload(e, setStartImage)}
+                style={{ display: "none" }}
+                id="start-upload"
+              />
+              <label htmlFor="start-upload" style={{ cursor: "pointer" }}>
+                {startImage ? "Image loaded" : "Click / Drop / Paste"}
+              </label>
+            </div>
+          </div>
+          <div className="input-group">
+            <label>End Image</label>
+            <div
+              ref={endRef}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, setEndImage)}
+              style={{
+                border: "2px dashed var(--border-color)",
+                padding: "10px",
+                textAlign: "center",
+                borderRadius: "6px",
+                backgroundColor: endImage ? "var(--input-bg)" : "transparent",
+              }}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleFileUpload(e, setEndImage)}
+                style={{ display: "none" }}
+                id="end-upload"
+              />
+              <label htmlFor="end-upload" style={{ cursor: "pointer" }}>
+                {endImage ? "Image loaded" : "Click / Drop / Paste"}
+              </label>
+            </div>
+          </div>
+          <div className="input-group">
+            <label>Reference Images (up to 4)</label>
+            <div
+              ref={refImagesRef}
+              onDragOver={handleDragOver}
+              onDrop={(e) => {
+                e.preventDefault();
+                const files = Array.from(e.dataTransfer.files).slice(
                   0,
                   4 - referenceImages.length
                 );
@@ -337,49 +308,85 @@ const VideoGenerator = () => {
                   )
                 );
               }}
-              style={{ display: "none" }}
-              id="ref-upload"
-            />
-            <label htmlFor="ref-upload" style={{ cursor: "pointer" }}>
-              {referenceImages.length
-                ? `${referenceImages.length} images loaded`
-                : "Click / Drop / Paste"}
-            </label>
+              style={{
+                border: "2px dashed var(--border-color)",
+                padding: "10px",
+                textAlign: "center",
+                borderRadius: "6px",
+                backgroundColor: referenceImages.length
+                  ? "var(--input-bg)"
+                  : "transparent",
+              }}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files).slice(
+                    0,
+                    4 - referenceImages.length
+                  );
+                  const readers = files.map((file) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    return new Promise(
+                      (resolve) =>
+                        (reader.onloadend = () => resolve(reader.result))
+                    );
+                  });
+                  Promise.all(readers).then((results) =>
+                    setReferenceImages(
+                      [...referenceImages, ...results].slice(0, 4)
+                    )
+                  );
+                }}
+                style={{ display: "none" }}
+                id="ref-upload"
+              />
+              <label htmlFor="ref-upload" style={{ cursor: "pointer" }}>
+                {referenceImages.length
+                  ? `${referenceImages.length} images loaded`
+                  : "Click / Drop / Paste"}
+              </label>
+            </div>
           </div>
+          <div className="input-group">
+            <label>CFG Scale (0-1)</label>
+            <input
+              type="number"
+              value={cfgScale}
+              onChange={(e) =>
+                setCfgScale(Math.min(1, Math.max(0, e.target.value)))
+              }
+              step="0.1"
+              min="0"
+              max="1"
+              disabled={credits === null || credits <= 0}
+            />
+          </div>
+          <div className="input-group">
+            <label>Duration (seconds)</label>
+            <select
+              value={duration}
+              onChange={(e) => setDuration(Number(e.target.value))}
+              disabled={credits === null || credits <= 0}
+            >
+              <option value="5">5s (1 credit)</option>
+              <option value="10">10s (2 credits)</option>
+            </select>
+          </div>
+          {error && <div className="error-message">{error}</div>}
         </div>
-        <div className="input-group">
-          <label>CFG Scale (0-1)</label>
-          <input
-            type="number"
-            value={cfgScale}
-            onChange={(e) =>
-              setCfgScale(Math.min(1, Math.max(0, e.target.value)))
-            }
-            step="0.1"
-            min="0"
-            max="1"
-            disabled={credits === null || credits <= 0}
-          />
-        </div>
-        <div className="input-group">
-          <label>Duration (seconds)</label>
-          <select
-            value={duration}
-            onChange={(e) => setDuration(Number(e.target.value))}
-            disabled={credits === null || credits <= 0}
+        <div className="generate-btn-container">
+          <button
+            onClick={generateVideo}
+            className="generate-btn"
+            disabled={loading || credits === null || credits <= 0}
           >
-            <option value="5">5s (1 credit)</option>
-            <option value="10">10s (2 credits)</option>
-          </select>
+            Generate Video
+          </button>
         </div>
-        <button
-          onClick={generateVideo}
-          className="generate-btn"
-          disabled={loading || credits === null || credits <= 0}
-        >
-          Generate Video
-        </button>
-        {error && <div className="error-message">{error}</div>}
       </div>
       <div className="main-content">
         <div className="preview-section">
