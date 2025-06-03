@@ -2,16 +2,28 @@ import React, { useState, useEffect } from "react";
 import { auth, db, storage } from "./firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import "../styles/GeneratorStyles.css";
 
 const VideoGenerator = () => {
-  const [prompt, setPrompt] = useState("");
+  // State for video generation parameters
+  const [prompt, setPrompt] = useState(
+    "a portrait photo of a woman underwater with flowing hair"
+  );
+  const [negativePrompt, setNegativePrompt] = useState("");
+  const [aspectRatio, setAspectRatio] = useState("16:9");
   const [startImage, setStartImage] = useState("");
+  const [referenceImages, setReferenceImages] = useState([]);
+  const [cfgScale, setCfgScale] = useState(0.5);
+  const [duration, setDuration] = useState(5);
+
+  // State for UI and data
   const [currentVideo, setCurrentVideo] = useState("");
   const [error, setError] = useState("");
   const [previousVideos, setPreviousVideos] = useState([]);
   const [credits, setCredits] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Fetch user data on component mount
   useEffect(() => {
     const fetchUserData = async () => {
       const user = auth.currentUser;
@@ -55,6 +67,7 @@ const VideoGenerator = () => {
     fetchUserData();
   }, []);
 
+  // Function to generate video
   const generateVideo = async () => {
     if (!prompt.trim()) {
       setError("Please enter a prompt!");
@@ -76,14 +89,21 @@ const VideoGenerator = () => {
       const response = await fetch("http://localhost:3001/generate-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, start_image: startImage }),
+        body: JSON.stringify({
+          prompt,
+          negative_prompt: negativePrompt,
+          aspect_ratio: aspectRatio,
+          start_image: startImage,
+          reference_images: referenceImages,
+          cfg_scale: cfgScale,
+          duration,
+        }),
       });
       if (!response.ok) throw new Error("Error generating video. Try again!");
       const data = await response.json();
       console.log("Replicate video response:", data);
       const videoUrl = data.video;
 
-      // הורד את הווידאו מה-URL ושמור ב-Firebase Storage
       const videoResponse = await fetch(videoUrl);
       const videoBlob = await videoResponse.blob();
 
@@ -93,8 +113,6 @@ const VideoGenerator = () => {
         `users/${userId}/videos/${Date.now()}.mp4`
       );
       console.log("Uploading to Storage:", storageRef.fullPath);
-      console.log("User authenticated:", !!auth.currentUser);
-      console.log("User token:", await auth.currentUser.getIdToken());
       await uploadBytes(storageRef, videoBlob);
       const savedVideoUrl = await getDownloadURL(storageRef);
       console.log("Generated video URL:", savedVideoUrl);
@@ -104,7 +122,6 @@ const VideoGenerator = () => {
       const newCredits = credits - 1;
       setCredits(newCredits);
       const creditsRef = doc(db, "users", userId, "credits", "current");
-      console.log("Updating credits to:", newCredits);
       await setDoc(creditsRef, { value: newCredits });
 
       const newVideo = {
@@ -115,7 +132,6 @@ const VideoGenerator = () => {
       const updatedVideos = [newVideo, ...previousVideos];
       setPreviousVideos(updatedVideos);
       const videosRef = doc(db, "users", userId, "videos", "list");
-      console.log("Saving videos to:", videosRef.path);
       await setDoc(videosRef, { list: updatedVideos }, { merge: true });
     } catch (error) {
       setError(`Error generating video: ${error.message}`);
@@ -125,6 +141,7 @@ const VideoGenerator = () => {
     }
   };
 
+  // Function to recharge credits
   const rechargeCredits = async () => {
     const user = auth.currentUser;
     if (!user) {
@@ -135,70 +152,160 @@ const VideoGenerator = () => {
     const newCredits = (credits || 0) + 10;
     setCredits(newCredits);
     const creditsRef = doc(db, "users", userId, "credits", "current");
-    console.log("Recharging credits to:", newCredits);
     await setDoc(creditsRef, { value: newCredits });
     setError("");
     alert("Credits recharged! +10 credits.");
   };
 
+  // JSX rendering
   return (
-    <div className="container mt-4">
-      <h1 className="text-center mb-4">Saturn AI Video Generator</h1>
-      <div className="alert alert-info mb-3">
-        Credits left: {credits !== null ? credits : "Loading..."}
-        <button
-          className="btn btn-success ms-2"
-          onClick={rechargeCredits}
-          disabled={loading || credits === null}
-        >
-          Recharge (+10)
-        </button>
-      </div>
-      <div className="mb-3">
-        <input
-          type="text"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Enter a prompt (e.g., 'a woman underwater with flowing hair')"
-          className="form-control"
-          disabled={credits === null || credits <= 0}
-        />
-        <input
-          type="text"
-          value={startImage}
-          onChange={(e) => setStartImage(e.target.value)}
-          placeholder="Enter start image URL (optional)"
-          className="form-control mt-2"
-          disabled={credits === null || credits <= 0}
-        />
+    <div className="generator-wrapper">
+      {/* Sidebar for inputs */}
+      <div className="sidebar">
+        <h2>Saturn AI Video Generator</h2>
+        <div className="credits-section">
+          <span>Credits: {credits !== null ? credits : "Loading..."}</span>
+          <button
+            className="recharge-btn"
+            onClick={rechargeCredits}
+            disabled={loading || credits === null}
+          >
+            Recharge (+10)
+          </button>
+        </div>
+
+        {/* Prompt Input */}
+        <div className="input-group">
+          <label>Prompt</label>
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Enter a prompt (e.g., 'a woman underwater with flowing hair')"
+            disabled={credits === null || credits <= 0}
+          />
+        </div>
+
+        {/* Negative Prompt */}
+        <div className="input-group">
+          <label>Negative Prompt</label>
+          <textarea
+            value={negativePrompt}
+            onChange={(e) => setNegativePrompt(e.target.value)}
+            placeholder="Things you don't want (e.g., 'blurry')"
+            disabled={credits === null || credits <= 0}
+          />
+        </div>
+
+        {/* Aspect Ratio */}
+        <div className="input-group">
+          <label>Aspect Ratio</label>
+          <select
+            value={aspectRatio}
+            onChange={(e) => setAspectRatio(e.target.value)}
+            disabled={credits === null || credits <= 0}
+          >
+            <option value="16:9">16:9</option>
+            <option value="4:4">4:3</option>
+            <option value="1:1">1:1</option>
+          </select>
+        </div>
+
+        {/* Start Image URL */}
+        <div className="input-group">
+          <label>Start Image URL</label>
+          <input
+            type="text"
+            value={startImage}
+            onChange={(e) => setStartImage(e.target.value)}
+            placeholder="Enter start image URL (optional)"
+            disabled={credits === null || credits <= 0}
+          />
+        </div>
+
+        {/* Reference Images */}
+        <div className="input-group">
+          <label>Reference Images (URLs, comma-separated)</label>
+          <input
+            type="text"
+            value={referenceImages.join(",")}
+            onChange={(e) =>
+              setReferenceImages(
+                e.target.value.split(",").map((url) => url.trim())
+              )
+            }
+            placeholder="Enter reference image URLs (e.g., 'url1,url2')"
+            disabled={credits === null || credits <= 0}
+          />
+        </div>
+
+        {/* CFG Scale */}
+        <div className="input-group">
+          <label>CFG Scale (0-1)</label>
+          <input
+            type="number"
+            value={cfgScale}
+            onChange={(e) =>
+              setCfgScale(Math.min(1, Math.max(0, e.target.value)))
+            }
+            step="0.1"
+            min="0"
+            max="1"
+            disabled={credits === null || credits <= 0}
+          />
+        </div>
+
+        {/* Duration */}
+        <div className="input-group">
+          <label>Duration (seconds)</label>
+          <input
+            type="number"
+            value={duration}
+            onChange={(e) => setDuration(Math.max(1, e.target.value))}
+            min="1"
+            disabled={credits === null || credits <= 0}
+          />
+        </div>
+
+        {/* Generate Button */}
         <button
           onClick={generateVideo}
-          className="btn btn-primary mt-2 w-100"
+          className="generate-btn"
           disabled={loading || credits === null || credits <= 0}
         >
           Generate Video
         </button>
+
+        {/* Error Message */}
+        {error && <div className="error-message">{error}</div>}
       </div>
-      {error && <div className="alert alert-danger">{error}</div>}
-      <div className="text-center mb-4">
-        {loading && <p className="text-muted">Generating...</p>}
-        {currentVideo && !loading && (
-          <video controls className="img-fluid">
-            <source src={currentVideo} type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-        )}
-      </div>
-      <h2 className="mb-3">Previous Videos</h2>
-      <div className="row row-cols-1 row-cols-md-3 g-3">
-        {previousVideos.map((vid, index) => (
-          <div key={index} className="col">
-            <video controls className="img-thumbnail">
-              <source src={vid.src} type="video/mp4" />
+
+      {/* Main Content Area */}
+      <div className="main-content">
+        {/* Preview Section */}
+        <div className="preview-section">
+          {loading && <p className="loading-text">Generating...</p>}
+          {currentVideo && !loading && (
+            <video controls className="preview-media">
+              <source src={currentVideo} type="video/mp4" />
               Your browser does not support the video tag.
             </video>
+          )}
+        </div>
+
+        {/* Previous Videos Section */}
+        <div className="previous-section">
+          <h2>Previous Videos</h2>
+          <div className="media-grid">
+            {previousVideos.map((vid, index) => (
+              <div key={index} className="media-item">
+                <video controls>
+                  <source src={vid.src} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );

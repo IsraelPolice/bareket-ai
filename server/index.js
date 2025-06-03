@@ -49,7 +49,7 @@ async function startServer() {
     process.exit(1);
   }
 
-  // נתיב ליצירת תמונה (קיים כבר)
+  // נתיב ליצירת תמונה
   app.post("/generate-image", async (req, res) => {
     try {
       const { prompt } = req.body;
@@ -110,13 +110,24 @@ async function startServer() {
   // נתיב חדש ליצירת וידאו
   app.post("/generate-video", async (req, res) => {
     try {
-      const { prompt, start_image } = req.body;
-      console.log(
-        "Received video prompt:",
+      const {
         prompt,
-        "Start image:",
-        start_image
-      );
+        negative_prompt,
+        aspect_ratio,
+        start_image,
+        reference_images,
+        cfg_scale,
+        duration,
+      } = req.body;
+      console.log("Received video params:", {
+        prompt,
+        negative_prompt,
+        aspect_ratio,
+        start_image,
+        reference_images,
+        cfg_scale,
+        duration,
+      });
       if (!prompt) {
         return res.status(400).json({ error: "Prompt is required" });
       }
@@ -125,10 +136,15 @@ async function startServer() {
       console.log("Running Replicate with video model:", model);
       const output = await replicate.run(model, {
         input: {
-          prompt: prompt,
+          prompt,
+          negative_prompt: negative_prompt || "",
+          aspect_ratio: start_image ? undefined : aspect_ratio || "16:9", // Ignored if start_image is provided
           start_image:
             start_image ||
-            "https://replicate.delivery/pbxt/MNRKHnYUu5HjNqEerj2kxWRmUD3xWGaZ0gJmhqVbkra2jCbD/underwater.jpeg", // תמונת ברירת מחדל
+            "https://replicate.delivery/pbxt/MNRKHnYUu5HjNqEerj2kxWRmUD3xWGaZ0gJmhqVbkra2jCbD/underwater.jpeg",
+          reference_images: reference_images || [],
+          cfg_scale: cfg_scale || 0.5,
+          duration: duration || 5,
         },
       });
 

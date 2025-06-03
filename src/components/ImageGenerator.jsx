@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { auth, db, storage } from "./firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
+import "../styles/GeneratorStyles.css";
 
 const ImageGenerator = () => {
   const [prompt, setPrompt] = useState("");
@@ -133,49 +134,55 @@ const ImageGenerator = () => {
   };
 
   return (
-    <div className="container mt-4">
-      <h1 className="text-center mb-4">Saturn AI Image Generator</h1>
-      <div className="alert alert-info mb-3">
-        Credits left: {credits !== null ? credits : "Loading..."}
-        <button
-          className="btn btn-success ms-2"
-          onClick={rechargeCredits}
-          disabled={loading || credits === null}
-        >
-          Recharge (+10)
-        </button>
-      </div>
-      <div className="mb-3">
-        <input
-          type="text"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Enter a prompt (e.g., 'sun')"
-          className="form-control"
-          disabled={credits === null || credits <= 0}
-        />
+    <div className="generator-wrapper">
+      <div className="sidebar">
+        <h2>Saturn AI Image Generator</h2>
+        <div className="credits-section">
+          <span>Credits: {credits !== null ? credits : "Loading..."}</span>
+          <button
+            className="recharge-btn"
+            onClick={rechargeCredits}
+            disabled={loading || credits === null}
+          >
+            Recharge (+10)
+          </button>
+        </div>
+        <div className="input-group">
+          <label>Prompt</label>
+          <input
+            type="text"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Enter a prompt (e.g., 'sun')"
+            disabled={credits === null || credits <= 0}
+          />
+        </div>
         <button
           onClick={generateImage}
-          className="btn btn-primary mt-2 w-100"
+          className="generate-btn"
           disabled={loading || credits === null || credits <= 0}
         >
           Generate Image
         </button>
+        {error && <div className="error-message">{error}</div>}
       </div>
-      {error && <div className="alert alert-danger">{error}</div>}
-      <div className="text-center mb-4">
-        {loading && <p className="text-muted">Generating...</p>}
-        {currentImage && !loading && (
-          <img src={currentImage} alt={prompt} className="img-fluid" />
-        )}
-      </div>
-      <h2 className="mb-3">Previous Images</h2>
-      <div className="row row-cols-1 row-cols-md-3 g-3">
-        {previousImages.map((img, index) => (
-          <div key={index} className="col">
-            <img src={img.src} alt={img.alt} className="img-thumbnail" />
+      <div className="main-content">
+        <div className="preview-section">
+          {loading && <p className="loading-text">Generating...</p>}
+          {currentImage && !loading && (
+            <img src={currentImage} alt={prompt} className="preview-media" />
+          )}
+        </div>
+        <div className="previous-section">
+          <h2>Previous Images</h2>
+          <div className="media-grid">
+            {previousImages.map((img, index) => (
+              <div key={index} className="media-item">
+                <img src={img.src} alt={img.alt} />
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );
