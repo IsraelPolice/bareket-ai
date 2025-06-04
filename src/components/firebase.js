@@ -4,8 +4,17 @@ import {
   setPersistence,
   browserLocalPersistence,
 } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  query,
+  getDocs,
+  onSnapshot, // נוסיף את onSnapshot
+} from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB56oMLBTIZnrDf0Qbw2mRrb2acQiSrmac",
@@ -22,4 +31,18 @@ setPersistence(auth, browserLocalPersistence);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-export { auth, db, storage };
+export {
+  auth,
+  db,
+  storage,
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  query,
+  getDocs,
+  onSnapshot, // נוסיף את onSnapshot לייצוא
+  ref,
+  uploadBytes,
+  getDownloadURL,
+};

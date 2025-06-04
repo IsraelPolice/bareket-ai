@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { auth, db, storage } from "./firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { ref, uploadString, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import "../styles/GeneratorStyles.css";
 
 const ImageGenerator = () => {
@@ -81,7 +81,11 @@ const ImageGenerator = () => {
       if (!response.ok) throw new Error("Error generating image. Try again!");
       const data = await response.json();
       console.log("Replicate response:", data);
-      const base64Image = data.image;
+      const imageUrl = data.image;
+
+      // המרת ה-URL ל-Blob
+      const imageResponse = await fetch(imageUrl);
+      const imageBlob = await imageResponse.blob();
 
       const userId = user.uid;
       const storageRef = ref(
@@ -91,11 +95,11 @@ const ImageGenerator = () => {
       console.log("Uploading to Storage:", storageRef.fullPath);
       console.log("User authenticated:", !!auth.currentUser);
       console.log("User token:", await auth.currentUser.getIdToken());
-      await uploadString(storageRef, base64Image, "data_url");
-      const imageUrl = await getDownloadURL(storageRef);
-      console.log("Generated image URL:", imageUrl);
+      await uploadBytes(storageRef, imageBlob); // שימוש ב-uploadBytes עם Blob
+      const imageUrlSaved = await getDownloadURL(storageRef);
+      console.log("Generated image URL:", imageUrlSaved);
 
-      setCurrentImage(imageUrl);
+      setCurrentImage(imageUrlSaved);
 
       const newCredits = credits - 1;
       setCredits(newCredits);
@@ -103,7 +107,11 @@ const ImageGenerator = () => {
       console.log("Updating credits to:", newCredits);
       await setDoc(creditsRef, { value: newCredits });
 
-      const newImage = { src: imageUrl, alt: prompt, timestamp: new Date() };
+      const newImage = {
+        src: imageUrlSaved,
+        alt: prompt,
+        timestamp: new Date(),
+      };
       const updatedImages = [newImage, ...previousImages];
       setPreviousImages(updatedImages);
       const imagesRef = doc(db, "users", userId, "images", "list");

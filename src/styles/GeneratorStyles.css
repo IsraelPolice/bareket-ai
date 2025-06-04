@@ -257,3 +257,34 @@ body {
     overflow-y: auto;
   }
 }
+
+/* ... (ה-CSS הקודם נשאר כפי שהוא עד ל-.loading-modal) ... */
+
+/* סגנון חדש למודאל הטעינה */
+.loading-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* רקע מעומעם */
+  display: flex;
+  justify-content: center; /* מרכז אופקי */
+  align-items: center; /* מרכז אנכי */
+  z-index: 1000;
+}
+
+.loading-modal video.loading-animation {
+  width: 300px; /* גודל מרובע מתאים */
+  height: 300px;
+  object-fit: cover; /* הסרטון ימלא את השטח ללא גבולות */
+  border: none; /* הסרת גבולות */
+  background: transparent; /* הסרת רקע */
+}
+
+/* התאמה למיקום מעל previous-section */
+.main-content .preview-section,
+.main-content .previous-section {
+  position: relative;
+  z-index: 1;
+}
