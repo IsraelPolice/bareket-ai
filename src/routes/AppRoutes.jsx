@@ -22,18 +22,12 @@ const ProtectedRoute = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setIsLoggedIn(!!user);
       setLoading(false);
-      if (!user) {
-        navigate("/login");
-      }
+      if (!user) navigate("/login");
     });
-
     return () => unsubscribe();
   }, [navigate]);
 
-  if (loading) {
-    return <div className="text-center mt-5">Loading...</div>;
-  }
-
+  if (loading) return <div className="text-center mt-5">Loading...</div>;
   return isLoggedIn ? children : null;
 };
 
@@ -47,7 +41,6 @@ const AppRoutes = () => {
       <Route path="/learn" element={<Learn />} />
       <Route path="/contact" element={<Contact />} />
       <Route path="/example" element={<Example />} />
-
       <Route
         path="/generator"
         element={
@@ -57,7 +50,7 @@ const AppRoutes = () => {
         }
       />
       <Route
-        path="/video-generator"
+        path="/video-generator/*"
         element={
           <ProtectedRoute>
             <VideoGenerator />
