@@ -1,8 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, db } from "./firebase"; // Import Firestore
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore"; // For storing data in Firestore
+import { auth, db } from "./firebase";
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+} from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 
 const SignUp = () => {
   const [firstName, setFirstName] = useState("");
@@ -11,13 +14,14 @@ const SignUp = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const navigate = useNavigate();
 
   const handleSignUp = async (e) => {
     e.preventDefault();
     setError("");
+    setSuccess("");
 
-    // Validation: Check password match
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
@@ -32,20 +36,29 @@ const SignUp = () => {
       );
       const user = userCredential.user;
 
-      // Store additional data in Firestore under users/{uid}
-      await setDoc(doc(db, "users", user.uid), {
-        firstName,
-        lastName,
-        email,
-        createdAt: new Date().toISOString(),
-      });
+      // Send email verification
+      await sendEmailVerification(user);
+      setSuccess(
+        "Verification email sent! Please check your inbox and verify your email before logging in."
+      );
 
-      // Store initial credits (as done previously)
-      await setDoc(doc(db, "users", user.uid, "credits", "current"), {
-        value: 10,
-      });
+      // Store additional data in Firestore
+      try {
+        await setDoc(doc(db, "users", user.uid), {
+          firstName,
+          lastName,
+          email,
+          createdAt: new Date().toISOString(),
+          emailVerified: false,
+        });
 
-      navigate("/"); // Navigate to homepage after successful signup
+        // Store initial credits
+        await setDoc(doc(db, "users", user.uid, "credits", "current"), {
+          value: 10,
+        });
+      } catch (firestoreError) {
+        setError("Failed to save user data: " + firestoreError.message);
+      }
     } catch (err) {
       setError("Signup error: " + err.message);
     }
@@ -59,6 +72,7 @@ const SignUp = () => {
     <div className="container mt-5">
       <h2 className="text-center mb-4">Sign Up</h2>
       {error && <div className="alert alert-danger">{error}</div>}
+      {success && <div className="alert alert-success">{success}</div>}
       <form onSubmit={handleSignUp}>
         <div className="mb-3">
           <label htmlFor="firstName" className="form-label">

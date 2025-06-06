@@ -5,6 +5,7 @@ import { auth } from "./firebase";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  sendEmailVerification,
 } from "firebase/auth";
 
 const Auth = ({ isSignUp }) => {
@@ -45,13 +46,47 @@ const Auth = ({ isSignUp }) => {
 
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
-        toast({ title: "הרשמה הצליחה", status: "success", duration: 3000 });
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+        const user = userCredential.user;
+        await sendEmailVerification(user);
+        toast({
+          title: "הרשמה הצליחה",
+          description:
+            "נשלח קישור אימות למייל שלך. אנא אמת את המייל לפני התחברות.",
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+        });
+        // Do not navigate; wait for email verification
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+        const user = userCredential.user;
+
+        // Check if email is verified
+        if (!user.emailVerified) {
+          await sendEmailVerification(user);
+          toast({
+            title: "שגיאה",
+            description:
+              "אנא אמת את המייל שלך לפני התחברות. נשלח קישור אימות חדש.",
+            status: "error",
+            duration: 5000,
+            isClosable: true,
+          });
+          return;
+        }
+
         toast({ title: "התחברות הצליחה", status: "success", duration: 3000 });
+        navigate("/dashboard");
       }
-      navigate("/dashboard");
     } catch (error) {
       toast({
         title: "שגיאה",
@@ -71,7 +106,7 @@ const Auth = ({ isSignUp }) => {
           placeholder="אימייל"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          type="email" // הוספת type="email" לולידציה בסיסית בדפדפן
+          type="email"
         />
         <Input
           type="password"
