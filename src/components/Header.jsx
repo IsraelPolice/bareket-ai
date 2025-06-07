@@ -58,6 +58,11 @@ function Header() {
                 <Link className="nav-link" to="/example">
                   Example
                 </Link>
+                <Link className="nav-link" to="/faq">
+                  {" "}
+                  {/* Added FAQ link */}
+                  FAQ
+                </Link>
               </div>
               <button
                 className="btn btn-primary go-to-app-btn"

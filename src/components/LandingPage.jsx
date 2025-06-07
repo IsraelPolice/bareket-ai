@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom"; // הוספתי Link
 import { Helmet } from "react-helmet"; // ל-SEO
 import { gsap } from "gsap";
 import "../styles/LandingPage.css";
@@ -76,7 +76,6 @@ function LandingPage() {
           content="AI video generator, Saturn AI, AI masterpiece generator, create AI videos"
         />
       </Helmet>
-
       <video
         ref={videoRef}
         src={heroVideo}
@@ -108,6 +107,10 @@ function LandingPage() {
       >
         Start Creating
       </button>
+      <p className="faq-link">
+        Need help? Visit our <Link to="/faq">FAQ</Link>.
+      </p>{" "}
+      {/* הוספת קישור ל-FAQ */}
     </div>
   );
 }
