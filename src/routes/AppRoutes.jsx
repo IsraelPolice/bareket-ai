@@ -10,6 +10,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import Features from "../components/Features";
 import Learn from "../components/Learn";
 import Contact from "../components/Contact";
+import FAQ from "../components/FAQ";
 import Example from "../components/Example";
 import VideoGenerator from "../components/VideoGenerator";
 
@@ -41,6 +42,7 @@ const AppRoutes = () => {
       <Route path="/learn" element={<Learn />} />
       <Route path="/contact" element={<Contact />} />
       <Route path="/example" element={<Example />} />
+      <Route path="/faq" element={<FAQ />} /> {/* Updated to lowercase /faq */}
       <Route
         path="/generator"
         element={
