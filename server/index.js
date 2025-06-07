@@ -48,7 +48,7 @@ const storage = admin.storage();
 
 // PayPal Configuration
 paypal.configure({
-  mode: "sandbox", // Change to "live" in production
+  mode: "live", // Updated to live for production
   client_id: process.env.PAYPAL_CLIENT_ID,
   client_secret: process.env.PAYPAL_CLIENT_SECRET,
 });

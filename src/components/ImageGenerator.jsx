@@ -11,6 +11,7 @@ const ImageGenerator = () => {
   const [previousImages, setPreviousImages] = useState([]);
   const [credits, setCredits] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showCreditOptions, setShowCreditOptions] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -125,20 +126,38 @@ const ImageGenerator = () => {
     }
   };
 
-  const rechargeCredits = async () => {
+  const handleBuyCredits = () => {
+    setShowCreditOptions(!showCreditOptions);
+  };
+
+  const initiatePayPalPayment = async (amount, creditsToAdd) => {
     const user = auth.currentUser;
     if (!user) {
-      setError("Please sign in to recharge credits.");
+      setError("Please sign in.");
       return;
     }
     const userId = user.uid;
-    const newCredits = (credits || 0) + 10;
-    setCredits(newCredits);
-    const creditsRef = doc(db, "users", userId, "credits", "current");
-    console.log("Recharging credits to:", newCredits);
-    await setDoc(creditsRef, { value: newCredits });
-    setError("");
-    alert("Credits recharged! +10 credits.");
+    try {
+      const response = await fetch(
+        "http://localhost:3001/create-paypal-payment",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "user-id": userId },
+          body: JSON.stringify({ amount, credits: creditsToAdd }),
+        }
+      );
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error: ${response.status}`);
+      }
+      const data = await response.json();
+      if (data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      }
+    } catch (error) {
+      console.error("Error initiating PayPal payment:", error.message);
+      setError(`Error initiating payment: ${error.message}`);
+    }
   };
 
   return (
@@ -150,12 +169,34 @@ const ImageGenerator = () => {
             <span>Credits: {credits !== null ? credits : "Loading..."}</span>
             <button
               className="recharge-btn"
-              onClick={rechargeCredits}
+              onClick={handleBuyCredits}
               disabled={loading || credits === null}
             >
-              Recharge (+10)
+              Buy Credits
             </button>
           </div>
+          {showCreditOptions && (
+            <div className="credit-options">
+              <button
+                onClick={() => initiatePayPalPayment(6.99, 72)}
+                className="credit-option-btn"
+              >
+                72 Credits for $6.99 (72 Images)
+              </button>
+              <button
+                onClick={() => initiatePayPalPayment(13.99, 150)}
+                className="credit-option-btn"
+              >
+                150 Credits for $13.99 (150 Images)
+              </button>
+              <button
+                onClick={() => initiatePayPalPayment(25.99, 300)}
+                className="credit-option-btn"
+              >
+                300 Credits for $25.99 (300 Images)
+              </button>
+            </div>
+          )}
           <div className="input-group">
             <label>Prompt</label>
             <input
