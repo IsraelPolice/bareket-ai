@@ -45,6 +45,31 @@
   z-index: 2;
   text-transform: uppercase;
   letter-spacing: 3px;
+  white-space: pre-wrap; /* מאפשר שליטה טובה יותר ב-<br /> */
+  text-align: center; /* מאזן את המראה ב-rtl */
+}
+
+.landing-description {
+  color: #ffffff;
+  font-size: 1.2rem;
+  max-width: 600px;
+  margin: 0 auto 30px;
+  text-align: center;
+  opacity: 0.9;
+  line-height: 1.5;
+  z-index: 2;
+}
+
+.video-description {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ffffff;
+  font-size: 0.9rem;
+  opacity: 0.7;
+  text-align: center;
+  z-index: 1;
 }
 
 .go-to-app-button {
@@ -81,6 +106,17 @@
     letter-spacing: 2px;
   }
 
+  .landing-description {
+    font-size: 1rem;
+    max-width: 90%;
+    margin-bottom: 20px;
+  }
+
+  .video-description {
+    font-size: 0.8rem;
+    bottom: 5px;
+  }
+
   .go-to-app-button {
     padding: 8px 20px;
     font-size: 1rem;
@@ -91,6 +127,15 @@
   .landing-title {
     font-size: 4.5rem;
     letter-spacing: 4px;
+  }
+
+  .landing-description {
+    font-size: 1.3rem;
+    max-width: 700px;
+  }
+
+  .video-description {
+    font-size: 1rem;
   }
 
   .go-to-app-button {

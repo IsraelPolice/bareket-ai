@@ -1,0 +1,66 @@
+.login-split-screen {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+.login-video-wrapper {
+  flex: 4; /* 3 מתוך 10 חלקים = 30% */
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+.login-video-wrapper,
+.container {
+  height: 100%;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+.container {
+  flex: 6;
+  padding: 30px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.container form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.container h2 {
+  font-size: 2rem;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.btn {
+  font-size: 0.95rem;
+  padding: 10px 14px;
+}
+
+.form-control {
+  font-size: 0.95rem;
+  padding: 8px 10px;
+}
+
+/* ✅ רספונסיביות למובייל */
+@media (max-width: 768px) {
+  .login-split-screen {
+    flex-direction: column;
+  }
+
+  .login-video-wrapper {
+    height: 200px;
+  }
+
+  .container {
+    padding: 30px 20px;
+    height: auto;
+  }
+}

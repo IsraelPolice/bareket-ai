@@ -1,0 +1,133 @@
+.learn-page {
+  background-color: var(--primary-bg);
+  color: var(--text-color);
+  font-family: "Poppins", sans-serif;
+  padding: 40px 20px;
+  min-height: 100vh;
+}
+
+.hero-section {
+  text-align: center;
+  padding: 60px 20px;
+  background: linear-gradient(135deg, var(--accent-color), var(--primary-bg));
+  border-radius: 10px;
+  margin-bottom: 40px;
+}
+
+.hero-section h1 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+}
+
+.hero-description {
+  font-size: 1.1rem;
+  max-width: 800px;
+  margin: 0 auto 30px;
+}
+
+.guide-section,
+.prompts-section,
+.credits-section {
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.guide-section h2,
+.prompts-section h2,
+.credits-section h2 {
+  font-size: 2rem;
+  margin-bottom: 20px;
+}
+
+.section-intro {
+  font-size: 1.1rem;
+  max-width: 900px;
+  margin: 0 auto 30px;
+  line-height: 1.6;
+}
+
+.section-tip {
+  font-size: 1rem;
+  max-width: 900px;
+  margin: 20px auto 0;
+  line-height: 1.6;
+  font-style: italic;
+}
+
+.steps-list {
+  list-style: none;
+  padding: 0;
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.steps-list li {
+  margin: 15px 0;
+  padding-left: 25px;
+  position: relative;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.steps-list li::before {
+  content: "✔";
+  color: var(--button-bg);
+  position: absolute;
+  left: 0;
+}
+
+.prompt-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.prompt-card {
+  background-color: var(--sidebar-bg);
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease;
+}
+
+.prompt-card:hover {
+  transform: translateY(-5px);
+}
+
+.prompt-card h3 {
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+  color: var(--button-bg);
+}
+
+.prompt-card p {
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.cta-link {
+  color: var(--button-bg);
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.cta-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .hero-section h1 {
+    font-size: 2rem;
+  }
+  .guide-section h2,
+  .prompts-section h2,
+  .credits-section h2 {
+    font-size: 1.8rem;
+  }
+  .prompt-cards {
+    grid-template-columns: 1fr;
+  }
+}

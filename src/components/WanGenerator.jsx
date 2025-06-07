@@ -7,7 +7,6 @@ import {
   setDoc,
   onSnapshot,
 } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
 import "../styles/GeneratorStyles.css";
 
 const WanGenerator = () => {
@@ -23,11 +22,22 @@ const WanGenerator = () => {
     const savedJobs = localStorage.getItem("activeJobs");
     return savedJobs ? JSON.parse(savedJobs) : [];
   });
+  const [showCreditOptions, setShowCreditOptions] = useState(false);
   const startRef = useRef(null);
 
   const auth = getAuth();
   const db = getFirestore();
-  const storage = getStorage();
+
+  // Calculate credits cost based on duration (WanGenerator doesn't have quality)
+  const calculateCreditsCost = () => {
+    let baseCredits = 6; // Base cost for 5 seconds
+    if (duration === "10") {
+      baseCredits *= 2; // Double the cost for 10 seconds
+    }
+    return baseCredits;
+  };
+
+  const creditsCost = calculateCreditsCost();
 
   useEffect(() => {
     localStorage.setItem("activeJobs", JSON.stringify(activeJobs));
@@ -95,7 +105,35 @@ const WanGenerator = () => {
     const userId = user.uid;
     console.log("Initializing Firestore listeners for user:", userId);
 
-    // Listen to credits
+    // Check for payment status in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get("payment");
+    const urlUserId = urlParams.get("userId");
+    const creditsAdded = urlParams.get("credits");
+    console.log("URL Parameters after payment:", {
+      paymentStatus,
+      urlUserId,
+      creditsAdded,
+    });
+
+    if (paymentStatus === "success" && urlUserId === userId && creditsAdded) {
+      setError(`Payment successful! Added ${creditsAdded} credits.`);
+      const creditsRef = doc(db, "users", userId, "credits", "current");
+      getDoc(creditsRef).then((snap) => {
+        const currentCredits = snap.exists() ? snap.data().value : 0;
+        const newCredits = currentCredits + parseInt(creditsAdded);
+        setDoc(creditsRef, { value: newCredits }, { merge: true });
+        setCredits(newCredits);
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (paymentStatus === "cancel") {
+      setError("Payment canceled.");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (paymentStatus === "success" && urlUserId !== userId) {
+      setError("Payment successful, but user ID mismatch. Credits not added.");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     const creditsRef = doc(db, "users", userId, "credits", "current");
     const unsubscribeCredits = onSnapshot(
       creditsRef,
@@ -114,7 +152,6 @@ const WanGenerator = () => {
       }
     );
 
-    // Listen to videos
     const videosRef = doc(db, "users", userId, "videos", "list");
     const unsubscribeVideos = onSnapshot(
       videosRef,
@@ -135,7 +172,6 @@ const WanGenerator = () => {
       }
     );
 
-    // Check active jobs
     const savedJobs = JSON.parse(localStorage.getItem("activeJobs") || "[]");
     if (savedJobs.length > 0) {
       savedJobs.forEach((job) => checkJobStatus(job.predictionId));
@@ -157,8 +193,8 @@ const WanGenerator = () => {
       setError("Please sign in.");
       return;
     }
-    if (credits === null || credits < 1) {
-      setError("Not enough credits.");
+    if (credits === null || credits < creditsCost) {
+      setError(`Not enough credits. Required: ${creditsCost}`);
       return;
     }
     const model = startImage
@@ -232,7 +268,11 @@ const WanGenerator = () => {
     }
   };
 
-  const rechargeCredits = async () => {
+  const handleBuyCredits = () => {
+    setShowCreditOptions(!showCreditOptions);
+  };
+
+  const initiatePayPalPayment = async (amount, creditsToAdd) => {
     const user = auth.currentUser;
     if (!user) {
       setError("Please sign in.");
@@ -240,19 +280,25 @@ const WanGenerator = () => {
     }
     const userId = user.uid;
     try {
-      const creditsRef = doc(db, "users", userId, "credits", "current");
-      const creditsSnap = await getDoc(creditsRef);
-      const currentCredits = creditsSnap.exists()
-        ? creditsSnap.data().value
-        : 0;
-      const newCredits = currentCredits + 10;
-      await setDoc(creditsRef, { value: newCredits });
-      console.log("Credits recharged to:", newCredits);
-      setError("");
-      alert("Credits recharged: +10!");
+      const response = await fetch(
+        "http://localhost:3001/create-paypal-payment",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "user-id": userId },
+          body: JSON.stringify({ amount, credits: creditsToAdd }),
+        }
+      );
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error: ${response.status}`);
+      }
+      const data = await response.json();
+      if (data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      }
     } catch (error) {
-      console.error("Error recharging credits:", error.message);
-      setError(`Failed to recharge credits: ${error.message}`);
+      console.error("Error initiating PayPal payment:", error.message);
+      setError(`Error initiating payment: ${error.message}`);
     }
   };
 
@@ -272,19 +318,41 @@ const WanGenerator = () => {
             <span>Credits: {credits !== null ? credits : "Loading..."}</span>
             <button
               className="recharge-btn"
-              onClick={rechargeCredits}
+              onClick={handleBuyCredits}
               disabled={loading || credits === null}
             >
-              Recharge (+10)
+              Buy Credits
             </button>
           </div>
+          {showCreditOptions && (
+            <div className="credit-options">
+              <button
+                onClick={() => initiatePayPalPayment(6.99, 72)}
+                className="credit-option-btn"
+              >
+                72 Credits for $6.99 (12 Basic Videos)
+              </button>
+              <button
+                onClick={() => initiatePayPalPayment(13.99, 150)}
+                className="credit-option-btn"
+              >
+                150 Credits for $13.99 (24 Basic Videos)
+              </button>
+              <button
+                onClick={() => initiatePayPalPayment(25.99, 300)}
+                className="credit-option-btn"
+              >
+                300 Credits for $25.99 (36 Basic Videos)
+              </button>
+            </div>
+          )}
           <div className="input-group">
             <label>Prompt</label>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Enter a prompt (e.g., 'A cat diving')"
-              disabled={loading || credits === null || credits <= 0}
+              disabled={loading || credits === null || credits < creditsCost}
             />
           </div>
           <div className="input-group">
@@ -292,7 +360,7 @@ const WanGenerator = () => {
             <select
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
-              disabled={loading || credits === null || credits <= 0}
+              disabled={loading || credits === null || credits < creditsCost}
             >
               <option value="5">5 seconds</option>
               <option value="10">10 seconds</option>
@@ -341,9 +409,9 @@ const WanGenerator = () => {
           <button
             onClick={generateVideo}
             className="generate-btn"
-            disabled={loading || credits === null || credits <= 0}
+            disabled={loading || credits === null || credits < creditsCost}
           >
-            Generate Video
+            Generate Video ({creditsCost} Credits)
           </button>
         </div>
       </div>

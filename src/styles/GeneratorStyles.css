@@ -45,7 +45,7 @@ body {
 }
 
 .sidebar-content {
-  padding-bottom: 100px; /* More space on mobile */
+  padding-bottom: 100px;
 }
 
 .generate-btn-container {
@@ -312,6 +312,64 @@ body {
   margin-top: 10px;
 }
 
+.credit-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.credit-option-btn {
+  padding: 8px;
+  background-color: var(--button-bg);
+  color: var(--text-color);
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.credit-option-btn:hover {
+  background-color: var(--button-hover);
+}
+
+.credit-option-btn:disabled {
+  background-color: #3e4b5b;
+  cursor: not-allowed;
+}
+
+.faq-section {
+  margin-bottom: 30px;
+}
+
+.faq-item {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: var(--accent-color);
+  border-radius: 6px;
+}
+
+.faq-item h3 {
+  color: var(--text-color);
+  font-size: 1.1rem;
+  margin-bottom: 10px;
+}
+
+.faq-item p {
+  color: #d3d8e0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.faq-item a {
+  color: var(--button-bg);
+  text-decoration: none;
+}
+
+.faq-item a:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 768px) {
   .generator-wrapper {
     flex-direction: column;
@@ -338,5 +396,8 @@ body {
   .media-grid {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 15px;
+  }
+  .faq-item {
+    padding: 10px;
   }
 }

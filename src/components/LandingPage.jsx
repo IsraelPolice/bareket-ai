@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet"; // ל-SEO
 import { gsap } from "gsap";
 import "../styles/LandingPage.css";
-import heroVideo from "../assets/hero-video.mp4"; // הווידאו שלך
+import heroVideo from "../assets/hero-video.mp4";
 
 function LandingPage() {
   const containerRef = useRef(null);
@@ -62,6 +63,20 @@ function LandingPage() {
 
   return (
     <div className="landing-container" ref={containerRef}>
+      <Helmet>
+        <title>
+          Create AI Videos with Saturn AI | AI Masterpiece Generator
+        </title>
+        <meta
+          name="description"
+          content="Generate stunning AI videos with Saturn AI's Masterpiece Generator. Transform your ideas into dynamic clips effortlessly. Start creating now!"
+        />
+        <meta
+          name="keywords"
+          content="AI video generator, Saturn AI, AI masterpiece generator, create AI videos"
+        />
+      </Helmet>
+
       <video
         ref={videoRef}
         src={heroVideo}
@@ -71,10 +86,21 @@ function LandingPage() {
         playsInline
         className="hero-video"
       />
+      <p className="video-description">
+        A captivating AI-generated video showcasing the power of Saturn AI's
+        Masterpiece Generator.
+      </p>
       <div className="overlay"></div>
       <h1 ref={titleRef} className="landing-title">
-        AI Masterpiece Generator
+        Create Stunning AI Videos
+        <br />
+        with Saturn AI
       </h1>
+      <p className="landing-description">
+        Unleash your creativity with Saturn AI's Masterpiece Generator.
+        Transform your ideas into breathtaking videos using advanced AI
+        technology.
+      </p>
       <button
         ref={buttonRef}
         onClick={handleGoToApp}

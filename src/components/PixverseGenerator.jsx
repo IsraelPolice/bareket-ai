@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { getAuth } from "firebase/auth";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
 import "../styles/GeneratorStyles.css";
 
 const PixverseGenerator = () => {
@@ -17,10 +16,24 @@ const PixverseGenerator = () => {
     const savedJobs = localStorage.getItem("activeJobs");
     return savedJobs ? JSON.parse(savedJobs) : [];
   });
+  const [showCreditOptions, setShowCreditOptions] = useState(false);
 
   const auth = getAuth();
   const db = getFirestore();
-  const storage = getStorage();
+
+  // Calculate credits cost based on duration and quality
+  const calculateCreditsCost = () => {
+    let baseCredits;
+    if (quality === "540p") baseCredits = 6; // Lowest quality
+    else if (quality === "720p") baseCredits = 9; // Medium quality
+    else if (quality === "1080p") baseCredits = 12; // Highest quality
+    if (duration === "10") {
+      baseCredits *= 2; // Double the cost for 10 seconds
+    }
+    return baseCredits;
+  };
+
+  const creditsCost = calculateCreditsCost();
 
   useEffect(() => {
     localStorage.setItem("activeJobs", JSON.stringify(activeJobs));
@@ -91,6 +104,36 @@ const PixverseGenerator = () => {
       return;
     }
     const userId = user.uid;
+
+    // Check for payment status in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get("payment");
+    const urlUserId = urlParams.get("userId");
+    const creditsAdded = urlParams.get("credits");
+    console.log("URL Parameters after payment:", {
+      paymentStatus,
+      urlUserId,
+      creditsAdded,
+    });
+
+    if (paymentStatus === "success" && urlUserId === userId && creditsAdded) {
+      setError(`Payment successful! Added ${creditsAdded} credits.`);
+      const creditsRef = doc(db, "users", userId, "credits", "current");
+      getDoc(creditsRef).then((snap) => {
+        const currentCredits = snap.exists() ? snap.data().value : 0;
+        const newCredits = currentCredits + parseInt(creditsAdded);
+        setDoc(creditsRef, { value: newCredits }, { merge: true });
+        setCredits(newCredits);
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (paymentStatus === "cancel") {
+      setError("Payment canceled.");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (paymentStatus === "success" && urlUserId !== userId) {
+      setError("Payment successful, but user ID mismatch. Credits not added.");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     const loadInitialData = async () => {
       try {
         const creditsRef = doc(db, "users", userId, "credits", "current");
@@ -132,8 +175,8 @@ const PixverseGenerator = () => {
       setError("Please sign in.");
       return;
     }
-    if (credits === null || credits < 1) {
-      setError("Not enough credits.");
+    if (credits === null || credits < creditsCost) {
+      setError(`Not enough credits. Required: ${creditsCost}`);
       return;
     }
     const payload = {
@@ -174,7 +217,11 @@ const PixverseGenerator = () => {
     }
   };
 
-  const rechargeCredits = async () => {
+  const handleBuyCredits = () => {
+    setShowCreditOptions(!showCreditOptions);
+  };
+
+  const initiatePayPalPayment = async (amount, creditsToAdd) => {
     const user = auth.currentUser;
     if (!user) {
       setError("Please sign in.");
@@ -182,15 +229,25 @@ const PixverseGenerator = () => {
     }
     const userId = user.uid;
     try {
-      const newCredits = (credits || 0) + 10;
-      setCredits(newCredits);
-      const creditsRef = doc(db, "users", userId, "credits", "current");
-      await setDoc(creditsRef, { value: newCredits });
-      setError("");
-      alert("Credits recharged: +10!");
+      const response = await fetch(
+        "http://localhost:3001/create-paypal-payment",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "user-id": userId },
+          body: JSON.stringify({ amount, credits: creditsToAdd }),
+        }
+      );
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error: ${response.status}`);
+      }
+      const data = await response.json();
+      if (data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      }
     } catch (error) {
-      console.error("Error recharging credits:", error.message);
-      setError(`Failed to recharge credits: ${error.message}`);
+      console.error("Error initiating PayPal payment:", error.message);
+      setError(`Error initiating payment: ${error.message}`);
     }
   };
 
@@ -210,19 +267,41 @@ const PixverseGenerator = () => {
             <span>Credits: {credits !== null ? credits : "Loading..."}</span>
             <button
               className="recharge-btn"
-              onClick={rechargeCredits}
+              onClick={handleBuyCredits}
               disabled={loading || credits === null}
             >
-              Recharge (+10)
+              Buy Credits
             </button>
           </div>
+          {showCreditOptions && (
+            <div className="credit-options">
+              <button
+                onClick={() => initiatePayPalPayment(6.99, 72)}
+                className="credit-option-btn"
+              >
+                72 Credits for $6.99 (12 Basic Videos)
+              </button>
+              <button
+                onClick={() => initiatePayPalPayment(13.99, 150)}
+                className="credit-option-btn"
+              >
+                150 Credits for $13.99 (24 Basic Videos)
+              </button>
+              <button
+                onClick={() => initiatePayPalPayment(25.99, 300)}
+                className="credit-option-btn"
+              >
+                300 Credits for $25.99 (36 Basic Videos)
+              </button>
+            </div>
+          )}
           <div className="input-group">
             <label>Prompt</label>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Enter a prompt (e.g., 'Snow leopard walking in snowy landscape')"
-              disabled={credits === null || credits <= 0}
+              disabled={credits === null || credits < creditsCost}
             />
           </div>
           <div className="input-group">
@@ -230,7 +309,7 @@ const PixverseGenerator = () => {
             <select
               value={quality}
               onChange={(e) => setQuality(e.target.value)}
-              disabled={credits === null || credits <= 0}
+              disabled={credits === null || credits < creditsCost}
             >
               <option value="540p">540p</option>
               <option value="720p">720p</option>
@@ -242,7 +321,7 @@ const PixverseGenerator = () => {
             <select
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
-              disabled={credits === null || credits <= 0}
+              disabled={credits === null || credits < creditsCost}
             >
               <option value="5">5 seconds</option>
               <option value="10">10 seconds</option>
@@ -265,9 +344,9 @@ const PixverseGenerator = () => {
           <button
             onClick={generateVideo}
             className="generate-btn"
-            disabled={loading || credits === null || credits <= 0}
+            disabled={loading || credits === null || credits < creditsCost}
           >
-            Generate Video
+            Generate Video ({creditsCost} Credits)
           </button>
         </div>
       </div>

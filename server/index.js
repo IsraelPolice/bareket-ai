@@ -1,10 +1,14 @@
-console.log("Loading index.js - Version 2025-06-07-v11");
+console.log("Loading index.js - Version 2025-06-07-v16");
 
 const express = require("express");
 const cors = require("cors");
 const Replicate = require("replicate");
+const paypal = require("paypal-rest-sdk");
 require("dotenv").config({ path: __dirname + "/.env" });
 const admin = require("firebase-admin");
+
+// Log firebase-admin version
+console.log("Firebase Admin SDK version:", admin.SDK_VERSION);
 
 // Initialize Firebase Admin SDK
 let serviceAccount;
@@ -42,6 +46,13 @@ try {
 const db = admin.firestore();
 const storage = admin.storage();
 
+// PayPal Configuration
+paypal.configure({
+  mode: "sandbox", // Change to "live" in production
+  client_id: process.env.PAYPAL_CLIENT_ID,
+  client_secret: process.env.PAYPAL_CLIENT_SECRET,
+});
+
 // Test Firestore connection
 async function testFirestore() {
   try {
@@ -66,7 +77,11 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
 // Validate environment variables
-const requiredEnvVars = ["REPLICATE_API_TOKEN"];
+const requiredEnvVars = [
+  "REPLICATE_API_TOKEN",
+  "PAYPAL_CLIENT_ID",
+  "PAYPAL_CLIENT_SECRET",
+];
 const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
 if (missingEnvVars.length > 0) {
   console.error("Missing environment variables:", missingEnvVars.join(", "));
@@ -98,6 +113,127 @@ async function uploadImageToFirebase(dataUrl, path, userId) {
   }
 }
 
+// Create PayPal Payment
+app.post("/create-paypal-payment", async (req, res) => {
+  const { amount, credits } = req.body;
+  const userId = req.headers["user-id"];
+
+  if (!userId) {
+    return res.status(401).json({ error: "User ID is required" });
+  }
+
+  const create_payment_json = {
+    intent: "sale",
+    payer: { payment_method: "paypal" },
+    redirect_urls: {
+      return_url: `http://localhost:3001/success?userId=${userId}&credits=${credits}`,
+      cancel_url: "http://localhost:3000?payment=cancel",
+    },
+    transactions: [
+      {
+        amount: {
+          total: amount.toFixed(2),
+          currency: "USD",
+        },
+        description: `Purchase of ${credits} credits for video generation`,
+      },
+    ],
+  };
+
+  paypal.payment.create(create_payment_json, (error, payment) => {
+    if (error) {
+      console.error("Error creating PayPal payment:", error);
+      return res.status(500).json({ error: "Failed to create payment" });
+    }
+    for (let link of payment.links) {
+      if (link.rel === "approval_url") {
+        console.log("Redirecting to PayPal approval URL:", link.href);
+        return res.json({ paymentUrl: link.href });
+      }
+    }
+    res.status(500).json({ error: "No approval URL found" });
+  });
+});
+
+// Handle PayPal Payment Success
+app.get("/success", async (req, res) => {
+  console.log("Success route hit with params:", req.query);
+  const { paymentId, PayerID, userId, credits } = req.query;
+
+  if (!paymentId || !PayerID || !userId || !credits) {
+    console.error("Missing required query parameters:", {
+      paymentId,
+      PayerID,
+      userId,
+      credits,
+    });
+    return res.status(400).send("Missing required query parameters");
+  }
+
+  const execute_payment_json = {
+    payer_id: PayerID,
+  };
+
+  paypal.payment.execute(
+    paymentId,
+    execute_payment_json,
+    async (error, payment) => {
+      if (error) {
+        console.error("Error executing PayPal payment:", {
+          message: error.message,
+          stack: error.stack,
+        });
+        return res.status(500).send("Payment execution failed");
+      }
+      try {
+        console.log(`Attempting to update credits for user ${userId}...`);
+        // Test Firestore connection again before updating credits
+        const testRef = db.doc("test/connection");
+        await testRef.set({ timestamp: new Date().toISOString() });
+        console.log(
+          "Firestore connection re-test successful before updating credits"
+        );
+
+        const creditsRef = db.doc(`users/${userId}/credits/current`);
+        const creditsSnap = await creditsRef.get();
+        // Compatibility check for exists (property vs function)
+        const docExists =
+          typeof creditsSnap.exists === "function"
+            ? creditsSnap.exists()
+            : creditsSnap.exists;
+        console.log("Credits snapshot:", {
+          exists: docExists,
+          data: docExists ? creditsSnap.data() : null,
+        });
+        const currentCredits = docExists ? creditsSnap.data().value : 0;
+        const newCredits = currentCredits + parseInt(credits);
+        console.log(
+          `Calculated new credits: current=${currentCredits}, adding=${credits}, newTotal=${newCredits}`
+        );
+        await creditsRef.set({ value: newCredits });
+        console.log(
+          `Added ${credits} credits to user ${userId}. New total: ${newCredits}`
+        );
+        res.redirect(
+          `http://localhost:3000?payment=success&userId=${userId}&credits=${credits}`
+        );
+      } catch (error) {
+        console.error("Error updating credits after payment:", {
+          message: error.message,
+          code: error.code,
+          stack: error.stack,
+        });
+        res.status(500).send("Failed to update credits");
+      }
+    }
+  );
+});
+
+// Handle PayPal Payment Cancel
+app.get("/cancel", (req, res) => {
+  res.redirect("http://localhost:3000?payment=cancel");
+});
+
 app.post("/generate-video", async (req, res) => {
   try {
     const { model, prompt, image, quality, duration } = req.body;
@@ -110,8 +246,6 @@ app.post("/generate-video", async (req, res) => {
       duration,
       userId,
     });
-    console.log("Model value (raw):", JSON.stringify(model));
-    console.log("Model value (type):", typeof model);
 
     if (!userId || !prompt || !duration) {
       console.log("Missing required fields:", { userId, prompt, duration });
@@ -121,13 +255,65 @@ app.post("/generate-video", async (req, res) => {
     }
 
     const cleanedModel = model.trim();
-    console.log("Cleaned model:", cleanedModel);
 
     if (![5, 10].includes(parseInt(duration))) {
       console.log("Invalid duration:", duration);
       return res
         .status(400)
         .json({ error: "Duration must be 5 or 10 seconds" });
+    }
+
+    // Calculate credit cost
+    let creditCost = 6; // Base cost for 5 seconds, lowest quality
+    if (cleanedModel === "pixverse/pixverse-v4.5") {
+      if (quality === "720p") creditCost = 9;
+      else if (quality === "1080p") creditCost = 12;
+    }
+    if (parseInt(duration) === 10) {
+      creditCost *= 2;
+    }
+
+    // Check and deduct credits
+    let currentCredits = 0;
+    try {
+      console.log(`Checking credits for user ${userId} in Firestore...`);
+      const creditsRef = db.doc(`users/${userId}/credits/current`);
+      const creditsSnap = await creditsRef.get();
+      const docExists =
+        typeof creditsSnap.exists === "function"
+          ? creditsSnap.exists()
+          : creditsSnap.exists;
+      if (!docExists) {
+        console.log(
+          "Credits document does not exist, creating with 10 credits..."
+        );
+        await creditsRef.set({ value: 10 }, { merge: true });
+        currentCredits = 10;
+      } else {
+        currentCredits = creditsSnap.data().value || 0;
+      }
+      console.log("Credits found:", currentCredits);
+
+      if (currentCredits < creditCost) {
+        console.log("Insufficient credits:", { currentCredits, creditCost });
+        return res.status(400).json({
+          error: `Insufficient credits. Requires ${creditCost} credits.`,
+        });
+      }
+
+      console.log(`Updating credits for user ${userId}...`);
+      await creditsRef.update({ value: currentCredits - creditCost });
+      console.log("Credits updated to:", currentCredits - creditCost);
+      currentCredits -= creditCost;
+    } catch (firestoreError) {
+      console.error("Firestore error during credits check/update:", {
+        message: firestoreError.message,
+        code: firestoreError.code,
+        stack: firestoreError.stack,
+      });
+      throw new Error(
+        `Failed to update credits in Firestore: ${firestoreError.message}`
+      );
     }
 
     let startImageURL;
@@ -176,46 +362,6 @@ app.post("/generate-video", async (req, res) => {
       throw new Error("No prediction ID returned from Replicate");
     }
 
-    const creditCost = 1;
-    let currentCredits = 0;
-    try {
-      console.log(`Checking credits for user ${userId} in Firestore...`);
-      const creditsRef = db.doc(`users/${userId}/credits/current`);
-      const creditsSnap = await creditsRef.get();
-      console.log("Credits snapshot exists:", creditsSnap.exists); // תיקון: הסר סוגריים
-      if (!creditsSnap.exists) {
-        console.log(
-          "Credits document does not exist, creating with 10 credits..."
-        );
-        await creditsRef.set({ value: 10 }, { merge: true });
-        currentCredits = 10;
-      } else {
-        currentCredits = creditsSnap.data().value || 0;
-      }
-      console.log("Credits found:", currentCredits);
-
-      if (currentCredits < creditCost) {
-        console.log("Insufficient credits:", { currentCredits, creditCost });
-        return res
-          .status(400)
-          .json({ error: "Insufficient credits. Requires 1 credit." });
-      }
-
-      console.log(`Updating credits for user ${userId}...`);
-      await creditsRef.update({ value: currentCredits - creditCost });
-      console.log("Credits updated to:", currentCredits - creditCost);
-      currentCredits -= creditCost;
-    } catch (firestoreError) {
-      console.error("Firestore error during credits check/update:", {
-        message: firestoreError.message,
-        code: firestoreError.code,
-        stack: firestoreError.stack,
-      });
-      throw new Error(
-        `Failed to update credits in Firestore: ${firestoreError.message}`
-      );
-    }
-
     try {
       console.log(`Saving job to Firestore for user ${userId}...`);
       const jobRef = db.doc(`users/${userId}/videoJobs/${prediction.id}`);
@@ -231,7 +377,11 @@ app.post("/generate-video", async (req, res) => {
       console.log(`Updating active jobs for user ${userId}...`);
       const activeJobsRef = db.doc(`users/${userId}/activeJobs/list`);
       const activeSnap = await activeJobsRef.get();
-      const jobs = activeSnap.exists ? activeSnap.data().jobs || [] : [];
+      const docExists =
+        typeof activeSnap.exists === "function"
+          ? activeSnap.exists()
+          : activeSnap.exists;
+      const jobs = docExists ? activeSnap.data().jobs || [] : [];
       jobs.push({
         predictionId: prediction.id,
         prompt,
@@ -280,7 +430,11 @@ app.get("/check-status/:predictionId", async (req, res) => {
     let jobData = {};
     try {
       const jobSnap = await jobRef.get();
-      if (jobSnap.exists) {
+      const docExists =
+        typeof jobSnap.exists === "function"
+          ? jobSnap.exists()
+          : jobSnap.exists;
+      if (docExists) {
         jobData = jobSnap.data();
         await jobRef.update({ status: prediction.status });
       } else {
@@ -304,8 +458,11 @@ app.get("/check-status/:predictionId", async (req, res) => {
       console.log(`Checking credits for user ${userId} in Firestore...`);
       const creditsRef = db.doc(`users/${userId}/credits/current`);
       const creditsSnap = await creditsRef.get();
-      console.log("Credits snapshot exists:", creditsSnap.exists); // תיקון: הסר סוגריים
-      currentCredits = creditsSnap.exists ? creditsSnap.data().value : 0;
+      const docExists =
+        typeof creditsSnap.exists === "function"
+          ? creditsSnap.exists()
+          : creditsSnap.exists;
+      currentCredits = docExists ? creditsSnap.data().value : 0;
       console.log("Credits found:", currentCredits);
     } catch (firestoreError) {
       console.error("Firestore error during credits check:", {
@@ -324,7 +481,11 @@ app.get("/check-status/:predictionId", async (req, res) => {
         console.log(`Saving video to Firestore for user ${userId}...`);
         const videosRef = db.doc(`users/${userId}/videos/list`);
         const videosSnap = await videosRef.get();
-        const videos = videosSnap.exists ? videosSnap.data().list || [] : [];
+        const docExists =
+          typeof videosSnap.exists === "function"
+            ? videosSnap.exists()
+            : videosSnap.exists;
+        const videos = docExists ? videosSnap.data().list || [] : [];
         videos.push({
           src: videoUrl,
           prompt: jobData.prompt || "Unknown prompt",
@@ -336,7 +497,11 @@ app.get("/check-status/:predictionId", async (req, res) => {
         console.log(`Removing from active jobs for user ${userId}...`);
         const activeJobsRef = db.doc(`users/${userId}/activeJobs/list`);
         const activeSnap = await activeJobsRef.get();
-        const jobs = activeSnap.exists ? activeSnap.data().jobs || [] : [];
+        const activeExists =
+          typeof activeSnap.exists === "function"
+            ? activeSnap.exists()
+            : activeSnap.exists;
+        const jobs = activeExists ? activeSnap.data().jobs || [] : [];
         const updatedJobs = jobs.filter(
           (job) => job.predictionId !== predictionId
         );
@@ -368,7 +533,11 @@ app.get("/check-status/:predictionId", async (req, res) => {
         );
         const activeJobsRef = db.doc(`users/${userId}/activeJobs/list`);
         const activeSnap = await activeJobsRef.get();
-        const jobs = activeSnap.exists ? activeSnap.data().jobs || [] : [];
+        const docExists =
+          typeof activeSnap.exists === "function"
+            ? activeSnap.exists()
+            : activeSnap.exists;
+        const jobs = docExists ? activeSnap.data().jobs || [] : [];
         const updatedJobs = jobs.filter(
           (job) => job.predictionId !== predictionId
         );

@@ -1,25 +1,37 @@
 import React from "react";
-import "../styles/FeaturesStyles.css"; // קובץ ה-CSS המעודכן
+import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet";
+import "../styles/FeaturesStyles.css";
 
 const Features = () => {
   return (
     <div className="features-page">
-      {/* Hero Section */}
+      <Helmet>
+        <title>Features of AI Video Generation | Saturn AI</title>
+        <meta
+          name="description"
+          content="Explore Saturn AI's features for AI video generation. Use Wan 2.1, Pixverse, and Kling 1.6 for stunning image-to-video transformations. Start creating today!"
+        />
+        <meta
+          name="keywords"
+          content="AI video generation features, Wan 2.1 i2v, Pixverse video AI, Kling 1.6, Saturn AI"
+        />
+      </Helmet>
+
       <section className="hero-section">
-        <h1>AI Image And Video Generation With Saturn AI</h1>
+        <h1>Explore AI Video Generation Features with Saturn AI</h1>
         <p className="hero-description">
           Discover the power of cutting-edge AI models for stunning
-          image-to-video transformations. Optimize your creativity with wan 2.1
-          i2v, pixverse, and more!
+          image-to-video transformations. Optimize your creativity with Wan 2.1
+          i2v, Pixverse, and more!
         </p>
       </section>
 
-      {/* Models Section */}
       <section className="models-section">
-        <h2>Our Advanced AI Models and more</h2>
+        <h2>Our Advanced AI Models and More</h2>
         <div className="model-cards">
           <div className="model-card">
-            <h3>wan 2.1 i2v</h3>
+            <h3>Wan 2.1 i2v</h3>
             <p>
               Transform your images into dynamic videos with unmatched
               precision. Ideal for creative projects needing high-quality motion
@@ -32,10 +44,14 @@ const Features = () => {
               />
               Your browser does not support the video tag.
             </video>
+            <p className="video-description">
+              A white cat wearing sunglasses on a surfboard, set against a
+              blurred beach scene with crystal-clear waters.
+            </p>
             <span className="model-icon">🎨</span>
           </div>
           <div className="model-card">
-            <h3>pixverse</h3>
+            <h3>Pixverse</h3>
             <p>
               Create vibrant, pixel-perfect videos with ease. Perfect for
               artists and designers seeking unique visual styles.
@@ -47,6 +63,9 @@ const Features = () => {
               />
               Your browser does not support the video tag.
             </video>
+            <p className="video-description">
+              A snow leopard walking carefully in a snowy landscape at twilight.
+            </p>
             <span className="model-icon">🌟</span>
           </div>
           <div className="model-card">
@@ -62,12 +81,14 @@ const Features = () => {
               />
               Your browser does not support the video tag.
             </video>
+            <p className="video-description">
+              A preview of Kling 1.6's advanced video generation capabilities.
+            </p>
             <span className="model-icon">⏳</span>
           </div>
         </div>
       </section>
 
-      {/* Why Choose Us Section */}
       <section className="why-choose-section">
         <h2>Why Choose Saturn AI Models?</h2>
         <ul className="benefits-list">
@@ -78,10 +99,14 @@ const Features = () => {
         </ul>
       </section>
 
-      {/* Final CTA */}
       <section className="final-cta-section">
         <h2>Start Creating Today</h2>
-        <p>Unlock your creative potential with Saturn AI.</p>
+        <p>
+          Unlock your creative potential with Saturn AI.{" "}
+          <Link to="/generator" className="cta-link">
+            Try Our AI Video Generator Now
+          </Link>
+        </p>
       </section>
     </div>
   );
