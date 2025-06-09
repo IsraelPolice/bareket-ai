@@ -124,8 +124,8 @@ app.post("/create-paypal-payment", async (req, res) => {
     intent: "sale",
     payer: { payment_method: "paypal" },
     redirect_urls: {
-      return_url: `http://localhost:3001/success?userId=${userId}&credits=${credits}`,
-      cancel_url: "http://localhost:3000?payment=cancel",
+      return_url: `https://saturn-backend-sdht.onrender.com/success?userId=${userId}&credits=${credits}`,
+      cancel_url: "https://saturngenix.com?payment=cancel",
     },
     transactions: [
       {
@@ -213,7 +213,7 @@ app.get("/success", async (req, res) => {
           `Added ${credits} credits to user ${userId}. New total: ${newCredits}`
         );
         res.redirect(
-          `http://localhost:3000?payment=success&userId=${userId}&credits=${credits}`
+          `https://saturngenix.com?payment=success&userId=${userId}&credits=${credits}`
         );
       } catch (error) {
         console.error("Error updating credits after payment:", {

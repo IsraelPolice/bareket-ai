@@ -53,7 +53,7 @@ const WanGenerator = () => {
         while (status === "processing") {
           console.log(`Checking status for prediction: ${predictionId}`);
           const response = await fetch(
-            `http://localhost:3001/check-status/${predictionId}`,
+            `https://saturn-backend-sdht.onrender.com/check-status/${predictionId}`,
             {
               headers: { "user-id": userId },
             }
@@ -213,11 +213,15 @@ const WanGenerator = () => {
     try {
       const userId = user.uid;
       console.log("Generating video for user:", userId);
-      const response = await fetch("http://localhost:3001/generate-video", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "user-id": userId },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        "https://saturn-backend-sdht.onrender.com/generate-video",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "user-id": userId },
+          body: JSON.stringify(payload),
+        }
+      );
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || `HTTP error: ${response.status}`);
@@ -281,7 +285,7 @@ const WanGenerator = () => {
     const userId = user.uid;
     try {
       const response = await fetch(
-        "http://localhost:3001/create-paypal-payment",
+        "https://saturn-backend-sdht.onrender.com/create-paypal-payment",
         {
           method: "POST",
           headers: { "Content-Type": "application/json", "user-id": userId },

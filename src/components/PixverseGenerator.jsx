@@ -49,7 +49,7 @@ const PixverseGenerator = () => {
         while (status === "processing") {
           console.log(`Checking status for prediction: ${predictionId}`);
           const response = await fetch(
-            `http://localhost:3001/check-status/${predictionId}`,
+            `https://saturn-backend-sdht.onrender.com/check-status/${predictionId}`,
             {
               headers: { "user-id": userId },
             }
@@ -191,11 +191,15 @@ const PixverseGenerator = () => {
     setCurrentVideo("");
     try {
       const userId = user.uid;
-      const response = await fetch("http://localhost:3001/generate-video", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "user-id": userId },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        "https://saturn-backend-sdht.onrender.com/generate-video",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "user-id": userId },
+          body: JSON.stringify(payload),
+        }
+      );
+
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(errorText);
@@ -230,7 +234,7 @@ const PixverseGenerator = () => {
     const userId = user.uid;
     try {
       const response = await fetch(
-        "http://localhost:3001/create-paypal-payment",
+        "https://saturn-backend-sdht.onrender.com/create-paypal-payment",
         {
           method: "POST",
           headers: { "Content-Type": "application/json", "user-id": userId },

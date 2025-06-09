@@ -73,11 +73,14 @@ const ImageGenerator = () => {
     setError("");
     setCurrentImage("");
     try {
-      const response = await fetch("http://localhost:3001/generate-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, width: 768, height: 768 }),
-      });
+      const response = await fetch(
+        "https://saturn-backend-sdht.onrender.com/generate-image",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, width: 768, height: 768 }),
+        }
+      );
       if (!response.ok) throw new Error("Error generating image. Try again!");
       const data = await response.json();
       console.log("Replicate response:", data);
