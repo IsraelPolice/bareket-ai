@@ -13,17 +13,15 @@ console.log("Firebase Admin SDK version:", admin.SDK_VERSION);
 // Initialize Firebase Admin SDK
 let serviceAccount;
 try {
-  serviceAccount = require("./serviceAccountKey.json");
-  console.log("Service Account loaded successfully:", {
-    project_id: serviceAccount.project_id,
-    client_email: serviceAccount.client_email,
-  });
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    console.log("Loaded service account from environment variable.");
+  } else {
+    serviceAccount = require("./serviceAccountKey.json");
+    console.log("Loaded service account from local file.");
+  }
 } catch (error) {
-  console.error(
-    "Failed to load serviceAccountKey.json:",
-    error.message,
-    error.stack
-  );
+  console.error("Failed to load service account:", error.message);
   process.exit(1);
 }
 
@@ -48,7 +46,7 @@ const storage = admin.storage();
 
 // PayPal Configuration
 paypal.configure({
-  mode: "sandbox", // Change to "live" in production
+  mode: "live", // Updated to live for production
   client_id: process.env.PAYPAL_CLIENT_ID,
   client_secret: process.env.PAYPAL_CLIENT_SECRET,
 });
