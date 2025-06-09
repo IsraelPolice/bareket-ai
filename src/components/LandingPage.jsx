@@ -135,10 +135,6 @@ function LandingPage() {
       >
         Start Creating
       </button>
-
-      <p className="faq-link">
-        Need help? Visit our <Link to="/faq">FAQ</Link>.
-      </p>
     </div>
   );
 }
