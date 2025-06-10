@@ -330,7 +330,7 @@ app.post("/generate-video", async (req, res) => {
 
       res.json({ predictionId: prediction.id, status: prediction.status });
     } else {
-      // Existing video generation logic
+      // Video generation logic
       if (!duration) {
         console.log("Missing required fields:", { duration });
         return res.status(400).json({ error: "Missing duration" });
@@ -343,13 +343,18 @@ app.post("/generate-video", async (req, res) => {
           .json({ error: "Duration must be 5 or 10 seconds" });
       }
 
-      let creditCost = 6;
+      let creditCost = 0;
       if (cleanedModel === "pixverse/pixverse-v4.5") {
+        creditCost = 6; // Base cost
         if (quality === "720p") creditCost = 9;
         else if (quality === "1080p") creditCost = 12;
-      }
-      if (parseInt(duration) === 10) {
-        creditCost *= 2;
+        if (parseInt(duration) === 10) creditCost *= 2; // Double for 10 seconds
+      } else if (
+        cleanedModel === "wavespeedai/wan-2.1-i2v-480p" ||
+        cleanedModel === "wavespeedai/wan-2.1-t2v-480p"
+      ) {
+        creditCost = 8; // Base cost for WAN
+        if (parseInt(duration) === 10) creditCost *= 2; // 16 credits for 10 seconds
       }
 
       let currentCredits = 0;
@@ -374,11 +379,9 @@ app.post("/generate-video", async (req, res) => {
 
         if (currentCredits < creditCost) {
           console.log("Insufficient credits:", { currentCredits, creditCost });
-          return res
-            .status(400)
-            .json({
-              error: `Insufficient credits. Requires ${creditCost} credits.`,
-            });
+          return res.status(400).json({
+            error: `Insufficient credits. Requires ${creditCost} credits.`,
+          });
         }
 
         console.log(`Updating credits for user ${userId}...`);

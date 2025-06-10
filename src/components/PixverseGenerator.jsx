@@ -62,7 +62,7 @@ const PixverseGenerator = () => {
           console.log("Status response:", data);
           status = data.status;
           if (status === "succeeded" && data.videoUrl) {
-            setCurrentVideo(data.videoUrl);
+            setCurrentVideo(data.videoUrl); // עדכון מיידי
             setCredits(data.value);
             const creditsRef = doc(db, "users", userId, "credits", "current");
             const creditsSnap = await getDoc(creditsRef);

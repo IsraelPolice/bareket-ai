@@ -57,7 +57,7 @@ const ImageGenerator = () => {
           console.log("Status response:", data);
           status = data.status;
           if (status === "succeeded" && data.imageUrl) {
-            setCurrentImage(data.imageUrl);
+            setCurrentImage(data.imageUrl); // עדכון תמונה
             setLoading(false);
             setActiveJobs((prevJobs) =>
               prevJobs.filter((job) => job.predictionId !== predictionId)
