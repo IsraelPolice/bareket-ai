@@ -41,7 +41,7 @@ const ImageGenerator = () => {
         if (!user) throw new Error("User not authenticated");
         const userId = user.uid;
         let status = "processing";
-        while (status === "processing") {
+        while (status === "processing" || status === "starting") {
           console.log(`Checking status for prediction: ${predictionId}`);
           const response = await fetch(
             `https://saturn-backend-sdht.onrender.com/check-status/${predictionId}`,
@@ -57,7 +57,7 @@ const ImageGenerator = () => {
           console.log("Status response:", data);
           status = data.status;
           if (status === "succeeded" && data.imageUrl) {
-            setCurrentImage(data.imageUrl); // עדכון תמונה
+            setCurrentImage(data.imageUrl); // עדכון תמונה מיידי
             setLoading(false);
             setActiveJobs((prevJobs) =>
               prevJobs.filter((job) => job.predictionId !== predictionId)
@@ -137,7 +137,12 @@ const ImageGenerator = () => {
       imagesRef,
       (doc) => {
         if (doc.exists()) {
-          setPreviousImages(doc.data().list || []);
+          const images = doc.data().list || [];
+          setPreviousImages(images);
+          // עדכון currentImage אם זה התמונה האחרונה
+          if (images.length > 0 && !currentImage) {
+            setCurrentImage(images[0].src);
+          }
         } else {
           setDoc(imagesRef, { list: [] }, { merge: true });
         }
@@ -157,7 +162,7 @@ const ImageGenerator = () => {
       unsubscribeCredits();
       unsubscribeImages();
     };
-  }, [auth, db, checkJobStatus]);
+  }, [auth, db, checkJobStatus, currentImage]);
 
   const generateImage = async () => {
     if (!prompt.trim()) {
@@ -193,7 +198,7 @@ const ImageGenerator = () => {
       };
       console.log("Sending payload to generate-image:", payload);
       const response = await fetch(
-        "https://saturn-backend-sdht.onrender.com/generate-image", // נתיב חדש ליצירת תמונות
+        "https://saturn-backend-sdht.onrender.com/generate-image",
         {
           method: "POST",
           headers: { "Content-Type": "application/json", "user-id": userId },
