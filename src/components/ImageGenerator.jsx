@@ -26,13 +26,24 @@ const ImageGenerator = () => {
   const [showCreditOptions, setShowCreditOptions] = useState(false);
   const startRef = useRef(null);
 
+  // Load currentImage from localStorage on mount
+  useEffect(() => {
+    const savedImage = localStorage.getItem("currentImage");
+    if (savedImage && !currentImage) {
+      setCurrentImage(savedImage);
+    }
+  }, []);
+
   // Calculate credits cost (1 credit per image)
   const calculateCreditsCost = () => 1;
   const creditsCost = calculateCreditsCost();
 
   useEffect(() => {
     localStorage.setItem("activeJobs", JSON.stringify(activeJobs));
-  }, [activeJobs]);
+    if (currentImage) {
+      localStorage.setItem("currentImage", currentImage);
+    }
+  }, [activeJobs, currentImage]);
 
   const checkJobStatus = useCallback(
     async (predictionId) => {
@@ -145,7 +156,7 @@ const ImageGenerator = () => {
           console.log("Updated previousImages:", images);
           setPreviousImages(images);
           if (images.length > 0 && !currentImage) {
-            setCurrentImage(images[0].src);
+            setCurrentImage(images[images.length - 1].src); // קח את התמונה האחרונה
           }
         } else {
           setDoc(imagesRef, { list: [] }, { merge: true });
@@ -207,7 +218,7 @@ const ImageGenerator = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "user-id": userId, // וודא שה-userId נשלח ב-Header
+            "user-id": userId,
           },
           body: JSON.stringify(payload),
         }
