@@ -30,7 +30,7 @@ const WanGenerator = () => {
 
   // Calculate credits cost based on duration (WanGenerator doesn't have quality)
   const calculateCreditsCost = () => {
-    let baseCredits = 6; // Base cost for 5 seconds
+    let baseCredits = 8; // Base cost for 5 seconds
     if (duration === "10") {
       baseCredits *= 2; // Double the cost for 10 seconds
     }
