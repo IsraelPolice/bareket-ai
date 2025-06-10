@@ -61,7 +61,7 @@ const ImageGenerator = () => {
               "Setting currentImage:",
               data.imageUrl || data.videoUrl
             );
-            setCurrentImage(data.imageUrl || data.videoUrl); // תמיכה בשני המפתחים
+            setCurrentImage(data.imageUrl || data.videoUrl);
             setLoading(false);
             setActiveJobs((prevJobs) =>
               prevJobs.filter((job) => job.predictionId !== predictionId)
@@ -142,7 +142,7 @@ const ImageGenerator = () => {
       (doc) => {
         if (doc.exists()) {
           const images = doc.data().list || [];
-          console.log("Updated previousImages:", images); // דיבאג
+          console.log("Updated previousImages:", images);
           setPreviousImages(images);
           if (images.length > 0 && !currentImage) {
             setCurrentImage(images[0].src);
@@ -205,7 +205,10 @@ const ImageGenerator = () => {
         "https://saturn-backend-sdht.onrender.com/generate-image",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", "user-id": userId },
+          headers: {
+            "Content-Type": "application/json",
+            "user-id": userId, // וודא שה-userId נשלח ב-Header
+          },
           body: JSON.stringify(payload),
         }
       );
