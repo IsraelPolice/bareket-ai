@@ -56,9 +56,12 @@ const ImageGenerator = () => {
           const data = await response.json();
           console.log("Full status response:", data);
           status = data.status;
-          if (status === "succeeded" && data.imageUrl) {
-            console.log("Setting currentImage:", data.imageUrl);
-            setCurrentImage(data.imageUrl); // עדכון תמונה מיידי
+          if (status === "succeeded" && (data.imageUrl || data.videoUrl)) {
+            console.log(
+              "Setting currentImage:",
+              data.imageUrl || data.videoUrl
+            );
+            setCurrentImage(data.imageUrl || data.videoUrl); // תמיכה בשני המפתחים
             setLoading(false);
             setActiveJobs((prevJobs) =>
               prevJobs.filter((job) => job.predictionId !== predictionId)

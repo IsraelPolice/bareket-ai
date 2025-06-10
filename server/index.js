@@ -614,7 +614,7 @@ app.get("/check-status/:predictionId", async (req, res) => {
       try {
         console.log(`Saving output to Firestore for user ${userId}...`);
         const collectionRef =
-          jobData.model ===
+          prediction.version ===
           "stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc"
             ? db.doc(`users/${userId}/images/list`)
             : db.doc(`users/${userId}/videos/list`);
@@ -655,13 +655,13 @@ app.get("/check-status/:predictionId", async (req, res) => {
       }
 
       const responseKey =
-        jobData.model ===
+        prediction.version ===
         "stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc"
           ? "imageUrl"
           : "videoUrl";
       return res.json({
         status: prediction.status,
-        [responseKey]: outputUrl, // וודא שהמפתח תואם
+        [responseKey]: outputUrl,
         value: currentCredits,
       });
     } else if (
