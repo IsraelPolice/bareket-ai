@@ -191,9 +191,9 @@ const ImageGenerator = () => {
         num_inference_steps: 25,
         ...(startImage ? { image: startImage } : {}),
       };
-      console.log("Sending payload:", payload);
+      console.log("Sending payload to generate-image:", payload);
       const response = await fetch(
-        "https://saturn-backend-sdht.onrender.com/generate-video",
+        "https://saturn-backend-sdht.onrender.com/generate-image", // נתיב חדש ליצירת תמונות
         {
           method: "POST",
           headers: { "Content-Type": "application/json", "user-id": userId },

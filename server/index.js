@@ -226,16 +226,25 @@ app.get("/cancel", (req, res) => {
   res.redirect("http://localhost:3000?payment=cancel");
 });
 
-app.post("/generate-video", async (req, res) => {
+app.post("/generate-image", async (req, res) => {
   try {
-    const { model, prompt, image, quality, duration } = req.body;
+    const {
+      model,
+      prompt,
+      image,
+      width,
+      height,
+      refine,
+      apply_watermark,
+      num_inference_steps,
+    } = req.body;
     const userId = req.headers["user-id"];
-    console.log("Request received at /generate-video:", {
+    console.log("Request received at /generate-image:", {
       model,
       prompt: prompt ? prompt.substring(0, 50) : "No prompt",
       image: image ? "Image provided" : "No image",
-      quality,
-      duration,
+      width,
+      height,
       userId,
     });
 
@@ -246,7 +255,6 @@ app.post("/generate-video", async (req, res) => {
 
     const cleanedModel = model.trim();
 
-    // Handle image generation with SDXL
     if (
       cleanedModel ===
       "stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc"
@@ -262,11 +270,12 @@ app.post("/generate-video", async (req, res) => {
 
       const input = {
         prompt,
-        width: 768,
-        height: 768,
-        refine: "expert_ensemble_refiner",
-        apply_watermark: false,
-        num_inference_steps: 25,
+        width: width || 768,
+        height: height || 768,
+        refine: refine || "expert_ensemble_refiner",
+        apply_watermark:
+          apply_watermark !== undefined ? apply_watermark : false,
+        num_inference_steps: num_inference_steps || 25,
         ...(startImageURL ? { image: startImageURL } : {}),
       };
 
@@ -330,158 +339,199 @@ app.post("/generate-video", async (req, res) => {
 
       res.json({ predictionId: prediction.id, status: prediction.status });
     } else {
-      // Video generation logic
-      if (!duration) {
-        console.log("Missing required fields:", { duration });
-        return res.status(400).json({ error: "Missing duration" });
-      }
-
-      if (![5, 10].includes(parseInt(duration))) {
-        console.log("Invalid duration:", duration);
-        return res
-          .status(400)
-          .json({ error: "Duration must be 5 or 10 seconds" });
-      }
-
-      let creditCost = 0;
-      if (cleanedModel === "pixverse/pixverse-v4.5") {
-        creditCost = 6; // Base cost
-        if (quality === "720p") creditCost = 9;
-        else if (quality === "1080p") creditCost = 12;
-        if (parseInt(duration) === 10) creditCost *= 2; // Double for 10 seconds
-      } else if (
-        cleanedModel === "wavespeedai/wan-2.1-i2v-480p" ||
-        cleanedModel === "wavespeedai/wan-2.1-t2v-480p"
-      ) {
-        creditCost = 8; // Base cost for WAN
-        if (parseInt(duration) === 10) creditCost *= 2; // 16 credits for 10 seconds
-      }
-
-      let currentCredits = 0;
-      try {
-        console.log(`Checking credits for user ${userId} in Firestore...`);
-        const creditsRef = db.doc(`users/${userId}/credits/current`);
-        const creditsSnap = await creditsRef.get();
-        const docExists =
-          typeof creditsSnap.exists === "function"
-            ? creditsSnap.exists()
-            : creditsSnap.exists;
-        if (!docExists) {
-          console.log(
-            "Credits document does not exist, creating with 10 credits..."
-          );
-          await creditsRef.set({ value: 10 }, { merge: true });
-          currentCredits = 10;
-        } else {
-          currentCredits = creditsSnap.data().value || 0;
-        }
-        console.log("Credits found:", currentCredits);
-
-        if (currentCredits < creditCost) {
-          console.log("Insufficient credits:", { currentCredits, creditCost });
-          return res.status(400).json({
-            error: `Insufficient credits. Requires ${creditCost} credits.`,
-          });
-        }
-
-        console.log(`Updating credits for user ${userId}...`);
-        await creditsRef.update({ value: currentCredits - creditCost });
-        console.log("Credits updated to:", currentCredits - creditCost);
-        currentCredits -= creditCost;
-      } catch (firestoreError) {
-        console.error("Firestore error during credits check/update:", {
-          message: firestoreError.message,
-          code: firestoreError.code,
-          stack: firestoreError.code,
-        });
-        throw new Error(
-          `Failed to update credits in Firestore: ${firestoreError.message}`
-        );
-      }
-
-      let startImageURL;
-      if (
-        image &&
-        cleanedModel === "wavespeedai/wan-2.1-i2v-480p" &&
-        image.startsWith("data:image/")
-      ) {
-        startImageURL = await uploadImageToFirebase(
-          image,
-          `users/${userId}/images/video-${Date.now()}.jpg`,
-          userId
-        );
-      }
-
-      const input = {
-        prompt,
-        duration: parseInt(duration),
-        ...(cleanedModel === "pixverse/pixverse-v4.5" && quality
-          ? { quality }
-          : {}),
-        ...(cleanedModel === "wavespeedai/wan-2.1-i2v-480p" && startImageURL
-          ? { image: startImageURL }
-          : {}),
-      };
-
-      console.log("Sending to Replicate:", {
-        version: cleanedModel,
-        input,
-        userId,
-      });
-
-      const prediction = await replicate.predictions.create({
-        version: cleanedModel,
-        input,
-      });
-
-      console.log("Replicate response:", {
-        id: prediction?.id,
-        status: prediction?.status,
-        error: prediction?.error,
-      });
-
-      if (!prediction?.id) {
-        console.error("No prediction ID in response:", prediction);
-        throw new Error("No prediction ID returned from Replicate");
-      }
-
-      try {
-        console.log(`Saving job to Firestore for user ${userId}...`);
-        const jobRef = db.doc(`users/${userId}/videoJobs/${prediction.id}`);
-        await jobRef.set({
-          predictionId: prediction.id,
-          status: prediction.status,
-          prompt,
-          model: cleanedModel,
-          createdAt: new Date().toISOString(),
-        });
-        console.log("Job saved");
-
-        console.log(`Updating active jobs for user ${userId}...`);
-        const activeJobsRef = db.doc(`users/${userId}/activeJobs/list`);
-        const activeSnap = await activeJobsRef.get();
-        const docExists =
-          typeof activeSnap.exists === "function"
-            ? activeSnap.exists()
-            : activeSnap.exists;
-        const jobs = docExists ? activeSnap.data().jobs || [] : [];
-        jobs.push({
-          predictionId: prediction.id,
-          prompt,
-          createdAt: new Date().toISOString(),
-        });
-        await activeJobsRef.set({ jobs }, { merge: true });
-        console.log("Active jobs updated");
-      } catch (firestoreError) {
-        console.error("Firestore error during job save:", {
-          message: firestoreError.message,
-          code: firestoreError.code,
-          stack: firestoreError.stack,
-        });
-      }
-
-      res.json({ predictionId: prediction.id, status: prediction.status });
+      return res
+        .status(400)
+        .json({ error: "Unsupported model for image generation" });
     }
+  } catch (error) {
+    console.error("Error generating image:", {
+      message: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/generate-video", async (req, res) => {
+  try {
+    const { model, prompt, image, quality, duration } = req.body;
+    const userId = req.headers["user-id"];
+    console.log("Request received at /generate-video:", {
+      model,
+      prompt: prompt ? prompt.substring(0, 50) : "No prompt",
+      image: image ? "Image provided" : "No image",
+      quality,
+      duration,
+      userId,
+    });
+
+    if (!userId || !prompt) {
+      console.log("Missing required fields:", { userId, prompt });
+      return res.status(400).json({ error: "Missing user ID or prompt" });
+    }
+
+    const cleanedModel = model.trim();
+
+    if (
+      cleanedModel !== "pixverse/pixverse-v4.5" &&
+      cleanedModel !== "wavespeedai/wan-2.1-i2v-480p" &&
+      cleanedModel !== "wavespeedai/wan-2.1-t2v-480p"
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Unsupported model for video generation" });
+    }
+
+    if (!duration) {
+      console.log("Missing required fields:", { duration });
+      return res.status(400).json({ error: "Missing duration" });
+    }
+
+    if (![5, 10].includes(parseInt(duration))) {
+      console.log("Invalid duration:", duration);
+      return res
+        .status(400)
+        .json({ error: "Duration must be 5 or 10 seconds" });
+    }
+
+    let creditCost = 0;
+    if (cleanedModel === "pixverse/pixverse-v4.5") {
+      creditCost = 6; // Base cost
+      if (quality === "720p") creditCost = 9;
+      else if (quality === "1080p") creditCost = 12;
+      if (parseInt(duration) === 10) creditCost *= 2; // Double for 10 seconds
+    } else if (
+      cleanedModel === "wavespeedai/wan-2.1-i2v-480p" ||
+      cleanedModel === "wavespeedai/wan-2.1-t2v-480p"
+    ) {
+      creditCost = 8; // Base cost for WAN
+      if (parseInt(duration) === 10) creditCost *= 2; // 16 credits for 10 seconds
+    }
+
+    let currentCredits = 0;
+    try {
+      console.log(`Checking credits for user ${userId} in Firestore...`);
+      const creditsRef = db.doc(`users/${userId}/credits/current`);
+      const creditsSnap = await creditsRef.get();
+      const docExists =
+        typeof creditsSnap.exists === "function"
+          ? creditsSnap.exists()
+          : creditsSnap.exists;
+      if (!docExists) {
+        console.log(
+          "Credits document does not exist, creating with 10 credits..."
+        );
+        await creditsRef.set({ value: 10 }, { merge: true });
+        currentCredits = 10;
+      } else {
+        currentCredits = creditsSnap.data().value || 0;
+      }
+      console.log("Credits found:", currentCredits);
+
+      if (currentCredits < creditCost) {
+        console.log("Insufficient credits:", { currentCredits, creditCost });
+        return res.status(400).json({
+          error: `Insufficient credits. Requires ${creditCost} credits.`,
+        });
+      }
+
+      console.log(`Updating credits for user ${userId}...`);
+      await creditsRef.update({ value: currentCredits - creditCost });
+      console.log("Credits updated to:", currentCredits - creditCost);
+      currentCredits -= creditCost;
+    } catch (firestoreError) {
+      console.error("Firestore error during credits check/update:", {
+        message: firestoreError.message,
+        code: firestoreError.code,
+        stack: firestoreError.code,
+      });
+      throw new Error(
+        `Failed to update credits in Firestore: ${firestoreError.message}`
+      );
+    }
+
+    let startImageURL;
+    if (
+      image &&
+      cleanedModel === "wavespeedai/wan-2.1-i2v-480p" &&
+      image.startsWith("data:image/")
+    ) {
+      startImageURL = await uploadImageToFirebase(
+        image,
+        `users/${userId}/images/video-${Date.now()}.jpg`,
+        userId
+      );
+    }
+
+    const input = {
+      prompt,
+      duration: parseInt(duration),
+      ...(cleanedModel === "pixverse/pixverse-v4.5" && quality
+        ? { quality }
+        : {}),
+      ...(cleanedModel === "wavespeedai/wan-2.1-i2v-480p" && startImageURL
+        ? { image: startImageURL }
+        : {}),
+    };
+
+    console.log("Sending to Replicate:", {
+      version: cleanedModel,
+      input,
+      userId,
+    });
+
+    const prediction = await replicate.predictions.create({
+      version: cleanedModel,
+      input,
+    });
+
+    console.log("Replicate response:", {
+      id: prediction?.id,
+      status: prediction?.status,
+      error: prediction?.error,
+    });
+
+    if (!prediction?.id) {
+      console.error("No prediction ID in response:", prediction);
+      throw new Error("No prediction ID returned from Replicate");
+    }
+
+    try {
+      console.log(`Saving job to Firestore for user ${userId}...`);
+      const jobRef = db.doc(`users/${userId}/videoJobs/${prediction.id}`);
+      await jobRef.set({
+        predictionId: prediction.id,
+        status: prediction.status,
+        prompt,
+        model: cleanedModel,
+        createdAt: new Date().toISOString(),
+      });
+      console.log("Job saved");
+
+      console.log(`Updating active jobs for user ${userId}...`);
+      const activeJobsRef = db.doc(`users/${userId}/activeJobs/list`);
+      const activeSnap = await activeJobsRef.get();
+      const docExists =
+        typeof activeSnap.exists === "function"
+          ? activeSnap.exists()
+          : activeSnap.exists;
+      const jobs = docExists ? activeSnap.data().jobs || [] : [];
+      jobs.push({
+        predictionId: prediction.id,
+        prompt,
+        createdAt: new Date().toISOString(),
+      });
+      await activeJobsRef.set({ jobs }, { merge: true });
+      console.log("Active jobs updated");
+    } catch (firestoreError) {
+      console.error("Firestore error during job save:", {
+        message: firestoreError.message,
+        code: firestoreError.code,
+        stack: firestoreError.stack,
+      });
+    }
+
+    res.json({ predictionId: prediction.id, status: prediction.status });
   } catch (error) {
     console.error("Error generating video or image:", {
       message: error.message,
