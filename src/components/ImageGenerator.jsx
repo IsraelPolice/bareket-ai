@@ -54,9 +54,10 @@ const ImageGenerator = () => {
             throw new Error(`Failed to check status: ${errorText}`);
           }
           const data = await response.json();
-          console.log("Status response:", data);
+          console.log("Full status response:", data);
           status = data.status;
           if (status === "succeeded" && data.imageUrl) {
+            console.log("Setting currentImage:", data.imageUrl);
             setCurrentImage(data.imageUrl); // עדכון תמונה מיידי
             setLoading(false);
             setActiveJobs((prevJobs) =>
@@ -138,8 +139,8 @@ const ImageGenerator = () => {
       (doc) => {
         if (doc.exists()) {
           const images = doc.data().list || [];
+          console.log("Updated previousImages:", images); // דיבאג
           setPreviousImages(images);
-          // עדכון currentImage אם זה התמונה האחרונה
           if (images.length > 0 && !currentImage) {
             setCurrentImage(images[0].src);
           }
@@ -420,6 +421,7 @@ const ImageGenerator = () => {
           {currentImage && !loading && (
             <img src={currentImage} alt={prompt} className="preview-media" />
           )}
+          {!currentImage && !loading && <p>No image generated yet.</p>}
         </div>
         <div className="previous-section">
           <h2>Previous Images</h2>

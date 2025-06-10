@@ -661,7 +661,7 @@ app.get("/check-status/:predictionId", async (req, res) => {
           : "videoUrl";
       return res.json({
         status: prediction.status,
-        [responseKey]: outputUrl,
+        [responseKey]: outputUrl, // וודא שהמפתח תואם
         value: currentCredits,
       });
     } else if (
