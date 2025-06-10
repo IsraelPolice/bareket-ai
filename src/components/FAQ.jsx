@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet";
 import "../styles/GeneratorStyles.css";
 
 const FAQ = () => {
@@ -29,7 +30,7 @@ const FAQ = () => {
           ),
         },
         {
-          question: "What is required to use Saturn AI?",
+          question: "What is required to use SaturnGenix?",
           answer: (
             <>
               All you need is a modern browser and an internet connection. No
@@ -43,7 +44,7 @@ const FAQ = () => {
       section: "Usage & Features",
       items: [
         {
-          question: "How do I create content with Saturn AI?",
+          question: "How do I create content with SaturnGenix?",
           answer: (
             <>
               Enter a prompt in the form on the homepage, select an AI model,
@@ -178,9 +179,20 @@ const FAQ = () => {
 
   return (
     <div className="generator-wrapper">
+      <Helmet>
+        <title>FAQ - Saturn AI Video Generator Support</title>
+        <meta
+          name="description"
+          content="Find answers to common questions about SaturnGenix AI video generator. Learn about usage, credits, and technical support."
+        />
+        <meta
+          name="keywords"
+          content="SaturnGenix FAQ, AI video generator support, SaturnGenix help"
+        />
+      </Helmet>
       <div className="main-content">
         <h1 className="contact-title">
-          Frequently Asked Questions - Saturn AI Support
+          Frequently Asked Questions - Saturn Support
         </h1>
         {faqData.map((section, index) => (
           <section className="faq-section" key={index}>

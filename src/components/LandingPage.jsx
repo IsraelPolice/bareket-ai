@@ -14,7 +14,6 @@ function LandingPage() {
   const location = useLocation();
 
   useEffect(() => {
-    // Show messages from payment result
     const params = new URLSearchParams(location.search);
     const payment = params.get("payment");
     const userId = params.get("userId");
@@ -30,7 +29,6 @@ function LandingPage() {
   }, [location]);
 
   useEffect(() => {
-    // Animations
     gsap.fromTo(
       titleRef.current,
       { opacity: 0, y: -50 },
@@ -47,7 +45,6 @@ function LandingPage() {
       { opacity: 1, y: 0, duration: 1, delay: 0.7, ease: "back.out(1.7)" }
     );
 
-    // Mouse parallax
     const videoElement = videoRef.current;
     const containerElement = containerRef.current;
 
@@ -87,16 +84,27 @@ function LandingPage() {
     <div className="landing-container" ref={containerRef}>
       <Helmet>
         <title>
-          Create AI Videos with Saturn AI | AI Masterpiece Generator
+          Create AI Videos with SaturnGenix | AI Masterpiece Generator
         </title>
         <meta
           name="description"
-          content="Generate stunning AI videos with Saturn AI's Masterpiece Generator. Transform your ideas into dynamic clips effortlessly. Start creating now!"
+          content="Generate stunning AI videos with SaturnGenix's Masterpiece Generator. Transform your ideas into dynamic clips effortlessly. Start creating now!"
         />
         <meta
           name="keywords"
-          content="AI video generator, Saturn AI, AI masterpiece generator, create AI videos"
+          content="AI video generator, SaturnGenix, AI masterpiece generator, create AI videos"
         />
+        <meta property="og:title" content="Create AI Videos with SaturnGenix" />
+        <meta
+          property="og:description"
+          content="Transform your ideas into dynamic AI videos with SaturnGenix's Masterpiece Generator."
+        />
+        <meta
+          property="og:image"
+          content="https://www.saturngenix.com/assets/hero-video-preview.jpg"
+        />
+        <meta property="og:url" content="https://www.saturngenix.com/" />
+        <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
 
       <video
@@ -108,26 +116,20 @@ function LandingPage() {
         playsInline
         className="hero-video"
       />
-
       <p className="video-description">
-        A captivating AI-generated video showcasing the power of Saturn AI's
+        A captivating AI-generated video showcasing the power of SaturnGenix's
         Masterpiece Generator.
       </p>
-
       <div className="overlay"></div>
-
       <h1 ref={titleRef} className="landing-title">
         Create Stunning AI Videos
         <br />
-        with Saturn AI
+        with Saturn
       </h1>
-
       <p className="landing-description">
-        Unleash your creativity with Saturn AI's Masterpiece Generator.
-        Transform your ideas into breathtaking videos using advanced AI
-        technology.
+        Unleash your creativity with Saturn's Masterpiece Generator. Transform
+        your ideas into breathtaking videos using advanced AI technology.
       </p>
-
       <button
         ref={buttonRef}
         onClick={handleGoToApp}

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Helmet } from "react-helmet";
 import "../styles/GeneratorStyles.css";
 
 const Contact = () => {
@@ -18,11 +19,14 @@ const Contact = () => {
     setError("");
     setSuccess("");
     try {
-      const response = await fetch("http://localhost:3001/send-contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, description }),
-      });
+      const response = await fetch(
+        "https://saturn-backend-sdht.onrender.com/send-contact",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ subject, description }),
+        }
+      );
       if (!response.ok) throw new Error("Failed to send message.");
       setSuccess("Message sent successfully!");
       setSubject("");
@@ -36,6 +40,17 @@ const Contact = () => {
 
   return (
     <div className="generator-wrapper">
+      <Helmet>
+        <title>Contact SaturnGenix - Get Support for AI Video Tools</title>
+        <meta
+          name="description"
+          content="Contact SaturnGenix for support with our AI video generation tools. Reach out via email or our contact form for quick assistance."
+        />
+        <meta
+          name="keywords"
+          content="contact SaturnGenix, AI video support, SaturnGenix support"
+        />
+      </Helmet>
       <div className="main-content">
         <h1 className="contact-title">Contact Us</h1>
         <div className="contact-container">

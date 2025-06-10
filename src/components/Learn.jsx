@@ -7,23 +7,36 @@ const Learn = () => {
   return (
     <div className="learn-page">
       <Helmet>
-        <title>Learn to Create AI Videos with Wan 2.1 | Saturn AI</title>
+        <title>Learn to Create AI Videos with Wan 2.1 | SaturnGenix</title>
         <meta
           name="description"
-          content="Learn to create AI videos with Saturn AI's Wan 2.1 Video Generator. Follow our step-by-step guide, discover top prompts, and start making stunning videos today!"
+          content="Learn to create AI videos with SaturnGenix's Wan 2.1 Video Generator. Follow our step-by-step guide, discover top prompts, and start making stunning videos today!"
         />
         <meta
           name="keywords"
-          content="AI video creation, Wan 2.1 video generator, text-to-video tool, Saturn AI, best AI video prompts"
+          content="AI video creation, Wan 2.1 video generator, text-to-video tool, SaturnGenix, best AI video prompts"
         />
+        <meta
+          property="og:title"
+          content="Learn to Create AI Videos with Wan 2.1 | SaturnGenix"
+        />
+        <meta
+          property="og:description"
+          content="Master AI video creation with SaturnGenix's Wan 2.1 guide and prompts."
+        />
+        <meta
+          property="og:image"
+          content="https://www.saturngenix.com/assets/learn-video-preview.jpg"
+        />
+        <meta property="og:url" content="https://www.saturngenix.com/learn" />
       </Helmet>
 
       <section className="hero-section">
-        <h1>Learn to Create AI Videos with Wan 2.1 on Saturn AI</h1>
+        <h1>Learn to Create AI Videos on Saturn</h1>
         <p className="hero-description">
-          Welcome to <strong>Saturn AI's Wan 2.1 Video Generator</strong> – your
-          go-to AI video generator for creating stunning videos effortlessly!
-          Whether you're looking to create videos with AI using text prompts or
+          Welcome to <strong>Saturn's Video Generator</strong> – your go-to AI
+          video generator for creating stunning videos effortlessly! Whether
+          you're looking to create videos with AI using text prompts or
           transform images into dynamic clips, this text-to-video tool is
           perfect for creators, marketers, and hobbyists. Follow this guide to
           master AI video creation and unlock your creativity.
@@ -33,13 +46,13 @@ const Learn = () => {
       <section className="guide-section">
         <h2>How to Create Videos with AI: A Step-by-Step Guide</h2>
         <p className="section-intro">
-          Using an AI video generator like Wan 2.1 is simple and intuitive.
-          Here’s how to get started:
+          Using an AI video generator like Wan 2.1 and Pixverse is simple and
+          intuitive. Here’s how to get started:
         </p>
         <ol className="steps-list">
           <li>
             <strong>Sign Up & Verify Your Email:</strong> Create an account on
-            Saturn AI and verify your email to access the full features of our
+            SaturnGenix and verify your email to access the full features of our
             text-to-video tool.
           </li>
           <li>
@@ -112,11 +125,11 @@ const Learn = () => {
       <section className="credits-section">
         <h2>Understanding Credits & How to Use This AI Video Tool</h2>
         <p className="section-intro">
-          Each video you create with Wan 2.1 costs 1 credit. New users start
-          with 10 free credits, and you can recharge with +10 credits anytime.
-          Ready to create videos with AI?{" "}
+          Each video you create with Wan 2.1 and Pixverse cost about 6 credits
+          for basic settings . New users start with 10 free credits, and you can
+          but more credits anytime. Ready to create videos with AI?{" "}
           <Link to="/generator" className="cta-link">
-            Try Wan 2.1 Video Generator Now
+            Try Wan 2.1/Pixverse Video Generator Now
           </Link>
         </p>
       </section>

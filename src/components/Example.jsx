@@ -7,23 +7,36 @@ const Examples = () => {
   return (
     <div className="examples-page">
       <Helmet>
-        <title>AI Video Generation Examples | Saturn AI</title>
+        <title>AI Video Generation Examples | SaturnGenix</title>
         <meta
           name="description"
-          content="See AI video generation examples with Wan 2.1 and Pixverse 4.5 on Saturn AI. Discover prompts, settings, and results to inspire your video creations!"
+          content="See AI video generation examples with Wan 2.1 and Pixverse 4.5 on SaturnGenix. Discover prompts, settings, and results to inspire your video creations!"
         />
         <meta
           name="keywords"
-          content="video generation examples, AI video prompts, Wan 2.1 video generation, Pixverse 4.5 video examples, Saturn AI"
+          content="video generation examples, AI video prompts, Wan 2.1 video generation, Pixverse 4.5 video examples, SaturnGenix"
         />
+        <meta
+          property="og:title"
+          content="AI Video Generation Examples | SaturnGenix"
+        />
+        <meta
+          property="og:description"
+          content="Explore examples of AI video generation with Wan 2.1 and Pixverse 4.5 on SaturnGenix."
+        />
+        <meta
+          property="og:image"
+          content="https://www.saturngenix.com/assets/example-video-preview.jpg"
+        />
+        <meta property="og:url" content="https://www.saturngenix.com/example" />
       </Helmet>
 
       <section className="hero-section">
-        <h1>AI Video Generation Examples on Saturn AI</h1>
+        <h1>AI Video Generation Examples on SaturnGenix</h1>
         <p className="hero-description">
           Discover how to create stunning AI-generated videos using Wan 2.1 and
           Pixverse 4.5. Explore sample prompts, settings, and outputs to inspire
-          your own video projects with <strong>Saturn AI</strong>.
+          your own video projects with <strong>SaturnGenix</strong>.
         </p>
       </section>
 
@@ -141,7 +154,7 @@ const Examples = () => {
         <h2>Ready to Create Your Own AI Videos?</h2>
         <p className="section-intro">
           Use these examples as inspiration and start generating your own videos
-          with Saturn AI. Experiment with prompts and settings to bring your
+          with SaturnGenix. Experiment with prompts and settings to bring your
           ideas to life!{" "}
           <Link to="/generator" className="cta-link">
             Start Generating Now
