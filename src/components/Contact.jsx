@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet";
 import "../styles/GeneratorStyles.css";
 
 const Contact = () => {
+  const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
@@ -11,7 +12,7 @@ const Contact = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!subject.trim() || !description.trim()) {
+    if (!email.trim() || !subject.trim() || !description.trim()) {
       setError("Please fill in all fields.");
       return;
     }
@@ -24,11 +25,12 @@ const Contact = () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subject, description }),
+          body: JSON.stringify({ email, subject, description }),
         }
       );
       if (!response.ok) throw new Error("Failed to send message.");
-      setSuccess("Message sent successfully!");
+      setSuccess("Message sent successfully! We'll reply within 48 hours.");
+      setEmail("");
       setSubject("");
       setDescription("");
     } catch (err) {
@@ -56,6 +58,17 @@ const Contact = () => {
         <div className="contact-container">
           <form className="contact-form" onSubmit={handleSubmit}>
             <div className="input-group">
+              <label>Email Address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Your email"
+                disabled={loading}
+                required
+              />
+            </div>
+            <div className="input-group">
               <label>Subject</label>
               <input
                 type="text"
@@ -63,6 +76,7 @@ const Contact = () => {
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="Enter subject"
                 disabled={loading}
+                required
               />
             </div>
             <div className="input-group">
@@ -73,6 +87,7 @@ const Contact = () => {
                 placeholder="Describe your issue or message"
                 rows="5"
                 disabled={loading}
+                required
               />
             </div>
             {error && (
@@ -89,6 +104,7 @@ const Contact = () => {
               {loading ? "Sending..." : "Send Message"}
             </button>
           </form>
+
           <div className="support-info">
             <h2>Technical Support</h2>
             <p>For assistance, reach out to us at:</p>
@@ -97,7 +113,7 @@ const Contact = () => {
               <a href="mailto:info@saturngenix.com">info@saturngenix.com</a>
             </p>
             <p>
-              <strong>Response Time:</strong> Within 48 hours
+              <strong>Response Time:</strong> Within 48 hours (Mon–Fri)
             </p>
           </div>
         </div>

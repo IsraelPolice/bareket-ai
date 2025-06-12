@@ -140,6 +140,18 @@ const FAQ = () => {
             </>
           ),
         },
+        {
+          question:
+            "Why does it take a long time to receive my image, video, or complete a purchase?",
+          answer: (
+            <>
+              At times, our servers may experience high demand, which can cause
+              slight delays. Image and purchase confirmations typically process
+              within one minute, while video generation can take up to three
+              minutes. We appreciate your patience — it's worth the wait!
+            </>
+          ),
+        },
       ],
     },
     {
