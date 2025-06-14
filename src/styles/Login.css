@@ -1,25 +1,25 @@
 .login-split-screen {
   display: flex;
-  min-height: 100vh; /* שינוי ל-min-height כדי לאפשר גלילה */
+  min-height: 100vh;
   width: 100vw;
   overflow: hidden;
 }
 
 .login-video-wrapper {
-  flex: 4; /* 40% מהמסך */
-  min-height: 100%; /* מתאים את הגובה ל-container */
+  flex: 4;
+  min-height: 100%;
   overflow: hidden;
   position: relative;
 }
 
 .login-video-wrapper,
 .container {
-  min-height: 100%; /* שינוי ל-min-height */
-  overflow-y: auto; /* מאפשר גלילה אנכית אם התוכן עולה על הגובה */
+  min-height: 100%;
+  overflow-y: auto;
 }
 
 .container {
-  flex: 6; /* 60% מהמסך */
+  flex: 6;
   padding: 30px 40px;
   display: flex;
   flex-direction: column;
@@ -32,8 +32,8 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  width: 100%; /* מאפשר לטופס להתאים את עצמו */
-  max-width: 400px; /* מגביל רוחב לטופס בדסקטופ */
+  width: 100%;
+  max-width: 400px;
 }
 
 .container h2 {
@@ -42,50 +42,51 @@
   text-align: center;
 }
 
-.btn {
+/* הגבלת סגנונות לכפתור רק בדף SignUp */
+.container .btn {
   font-size: 0.95rem;
   padding: 10px 14px;
-  width: 100%; /* הכפתור יתאים את עצמו לרוחב הטופס במובייל */
+  width: 100%;
 }
 
-.form-control {
+.container .form-control {
   font-size: 0.95rem;
   padding: 8px 10px;
-  width: 100%; /* שדות הטופס יתאימו לרוחב הטופס */
+  width: 100%;
 }
 
 /* ✅ רספונסיביות משופרת למובייל */
 @media (max-width: 768px) {
   .login-split-screen {
     flex-direction: column;
-    min-height: auto; /* מאפשר גמישות בגובה */
+    min-height: auto;
   }
 
   .login-video-wrapper {
-    height: 150px; /* גובה קבוע קטן יותר לווידאו */
-    flex: none; /* מבטל גמישות כדי לשלוט בגובה */
+    height: 150px;
+    flex: none;
   }
 
   .container {
-    padding: 20px 15px; /* פחות padding במובייל */
-    height: auto; /* מאפשר גלילה אם התוכן ארוך */
-    flex: none; /* מבטל גמישות כדי לשלוט בגובה */
+    padding: 20px 15px;
+    height: auto;
+    flex: none;
   }
 
   .container form {
-    max-width: 100%; /* טופס תופס את כל הרוחב במובייל */
+    max-width: 100%;
   }
 
   .container h2 {
-    font-size: 1.5rem; /* פונט קטן יותר במובייל */
+    font-size: 1.5rem;
   }
 
-  .btn {
-    font-size: 1rem; /* פונט מעט גדול יותר במובייל לנוחות */
+  .container .btn {
+    font-size: 1rem;
     padding: 12px;
   }
 
-  .form-control {
+  .container .form-control {
     font-size: 1rem;
     padding: 10px;
   }
