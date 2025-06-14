@@ -5,7 +5,7 @@ function Footer() {
     <footer className="bg-light text-center text-muted py-3 mt-auto">
       <div className="container">
         <small>
-          &copy; {new Date().getFullYear()} Sahar & Dvir. All rights reserved.
+          &copy; {new Date().getFullYear()} Saturn AI. All rights reserved.
         </small>
       </div>
     </footer>

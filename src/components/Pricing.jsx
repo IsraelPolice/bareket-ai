@@ -7,7 +7,7 @@ const Pricing = () => {
   return (
     <div className="features-page">
       <Helmet>
-        <title>Pricing Plans | SaturnGenix</title>
+        <title>Pricing Plans | Saturn AI</title>
         <meta
           name="description"
           content="Explore SaturnGenix pricing plans during our beta phase. Purchase credits now or subscribe starting August 2025. Pay securely with PayPal!"
@@ -29,7 +29,7 @@ const Pricing = () => {
       </Helmet>
 
       <section className="hero-section">
-        <h1>Pricing Plans for SaturnGenix</h1>
+        <h1>Pricing Plans for Saturn</h1>
         <p className="hero-description">
           Discover how to unlock your creative potential with our flexible
           pricing options during the beta phase. Starting August 2025, enjoy
@@ -44,9 +44,9 @@ const Pricing = () => {
             <h3>72 Credits</h3>
             <p className="price">$6.99</p>
             <p>
-              Perfect for trying out SaturnGenix! Includes 12 basic videos (5
-              seconds each) with Wan 2.1 or 9 videos with Pixverse, plus 1 SDXL
-              image per credit.
+              Perfect for trying out Saturn! Includes 12 basic videos (5 seconds
+              each) with Wan 2.1 or 9 videos with Pixverse, plus 1 SDXL image
+              per credit.
             </p>
             <p>
               <Link to="/generator" className="cta-link">
@@ -95,14 +95,14 @@ const Pricing = () => {
         <h2>Why Choose Our Pricing?</h2>
         <ul className="benefits-list">
           <li>Flexible credit system during the beta phase.</li>
-          <li>Transition to subscriptions in August 2025 for added value.</li>
+          <li>No Subscription needed. </li>
           <li>Secure and easy payments with PayPal.</li>
           <li>Perfect for creators at any level – from hobbyists to pros.</li>
         </ul>
       </section>
 
       <section className="final-cta-section">
-        <h2>Get Started with SaturnGenix</h2>
+        <h2>Get Started with Saturn</h2>
         <p>
           Purchase credits today and start creating! Need help? Visit our{" "}
           <Link to="/faq">FAQ page</Link> or{" "}
