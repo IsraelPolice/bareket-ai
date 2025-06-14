@@ -1,24 +1,25 @@
 .login-split-screen {
   display: flex;
-  height: 100vh;
+  min-height: 100vh; /* שינוי ל-min-height כדי לאפשר גלילה */
   width: 100vw;
   overflow: hidden;
 }
+
 .login-video-wrapper {
-  flex: 4; /* 3 מתוך 10 חלקים = 30% */
-  height: 100%;
+  flex: 4; /* 40% מהמסך */
+  min-height: 100%; /* מתאים את הגובה ל-container */
   overflow: hidden;
   position: relative;
 }
+
 .login-video-wrapper,
 .container {
-  height: 100%;
-  max-height: 100vh;
-  overflow: hidden;
+  min-height: 100%; /* שינוי ל-min-height */
+  overflow-y: auto; /* מאפשר גלילה אנכית אם התוכן עולה על הגובה */
 }
 
 .container {
-  flex: 6;
+  flex: 6; /* 60% מהמסך */
   padding: 30px 40px;
   display: flex;
   flex-direction: column;
@@ -31,6 +32,8 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 100%; /* מאפשר לטופס להתאים את עצמו */
+  max-width: 400px; /* מגביל רוחב לטופס בדסקטופ */
 }
 
 .container h2 {
@@ -42,25 +45,55 @@
 .btn {
   font-size: 0.95rem;
   padding: 10px 14px;
+  width: 100%; /* הכפתור יתאים את עצמו לרוחב הטופס במובייל */
 }
 
 .form-control {
   font-size: 0.95rem;
   padding: 8px 10px;
+  width: 100%; /* שדות הטופס יתאימו לרוחב הטופס */
 }
 
-/* ✅ רספונסיביות למובייל */
+/* ✅ רספונסיביות משופרת למובייל */
 @media (max-width: 768px) {
   .login-split-screen {
     flex-direction: column;
+    min-height: auto; /* מאפשר גמישות בגובה */
   }
 
   .login-video-wrapper {
-    height: 200px;
+    height: 150px; /* גובה קבוע קטן יותר לווידאו */
+    flex: none; /* מבטל גמישות כדי לשלוט בגובה */
   }
 
   .container {
-    padding: 30px 20px;
-    height: auto;
+    padding: 20px 15px; /* פחות padding במובייל */
+    height: auto; /* מאפשר גלילה אם התוכן ארוך */
+    flex: none; /* מבטל גמישות כדי לשלוט בגובה */
   }
+
+  .container form {
+    max-width: 100%; /* טופס תופס את כל הרוחב במובייל */
+  }
+
+  .container h2 {
+    font-size: 1.5rem; /* פונט קטן יותר במובייל */
+  }
+
+  .btn {
+    font-size: 1rem; /* פונט מעט גדול יותר במובייל לנוחות */
+    padding: 12px;
+  }
+
+  .form-control {
+    font-size: 1rem;
+    padding: 10px;
+  }
+}
+
+.alert {
+  width: 100%;
+  margin-bottom: 15px;
+  padding: 10px;
+  text-align: center;
 }
