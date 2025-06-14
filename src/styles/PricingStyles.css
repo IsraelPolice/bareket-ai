@@ -1,0 +1,226 @@
+.pricing-page {
+  background-color: var(--primary-bg);
+  color: var(--text-color);
+  font-family: "Poppins", sans-serif;
+  padding: 40px 20px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.hero-section {
+  text-align: center;
+  padding: 60px 20px;
+  background: linear-gradient(135deg, var(--accent-color), var(--primary-bg));
+  border-radius: 15px;
+  margin-bottom: 40px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+.hero-section h1 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  color: var(--button-bg);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.hero-description {
+  font-size: 1.1rem;
+  max-width: 800px;
+  margin: 0 auto 30px;
+  line-height: 1.6;
+}
+
+.models-section {
+  padding: 40px 20px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.models-section h2 {
+  font-size: 2rem;
+  margin-bottom: 30px;
+  color: var(--accent-color);
+}
+
+.model-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.model-card {
+  background-color: var(--sidebar-bg);
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  border-left: 4px solid var(--accent-color);
+}
+
+.model-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.model-card h3 {
+  font-size: 1.7rem;
+  margin-bottom: 15px;
+  color: var(--button-bg);
+  font-weight: 600;
+}
+
+.price {
+  font-size: 1.9rem;
+  color: var(--button-bg);
+  font-weight: bold;
+  margin: 10px 0;
+  background: var(--accent-color);
+  padding: 5px 15px;
+  border-radius: 5px;
+  display: inline-block;
+}
+
+.model-card p {
+  font-size: 0.95rem;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.cta-link {
+  display: inline-block;
+  padding: 8px 15px;
+  background-color: var(--button-bg);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 5px;
+  transition: background-color 0.3s ease;
+}
+
+.cta-link:hover {
+  background-color: darken(var(--button-bg), 10%);
+}
+
+.model-icon {
+  font-size: 2.2rem;
+  margin-top: 15px;
+  color: var(--accent-color);
+}
+
+.payment-note {
+  font-size: 0.9rem;
+  color: var(--text-color);
+  margin-top: 20px;
+  text-align: center;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 5px;
+}
+
+.why-choose-section {
+  padding: 40px 20px;
+  text-align: center;
+  background: linear-gradient(135deg, var(--sidebar-bg), var(--primary-bg));
+  border-radius: 12px;
+  margin: 40px auto;
+  max-width: 900px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.why-choose-section h2 {
+  font-size: 2rem;
+  margin-bottom: 20px;
+  color: var(--button-bg);
+}
+
+.benefits-list {
+  list-style: none;
+  padding: 0;
+  font-size: 1.05rem;
+}
+
+.benefits-list li {
+  margin: 12px 0;
+  position: relative;
+  padding-left: 25px;
+  color: var(--text-color);
+}
+
+.benefits-list li:before {
+  content: "✔";
+  color: var(--button-bg);
+  position: absolute;
+  left: 0;
+  font-weight: bold;
+}
+
+.final-cta-section {
+  text-align: center;
+  padding: 40px 20px;
+  margin-top: 40px;
+  background: var(--accent-color);
+  border-radius: 10px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+.final-cta-section h2 {
+  font-size: 2rem;
+  margin-bottom: 20px;
+  color: #fff;
+}
+
+.final-cta-section p {
+  font-size: 1.1rem;
+  max-width: 700px;
+  margin: 0 auto 30px;
+  color: #fff;
+}
+
+.final-cta-section .cta-link {
+  color: var(--sidebar-bg);
+  background-color: #fff;
+}
+
+.final-cta-section .cta-link:hover {
+  background-color: lighten(#fff, 10%);
+}
+
+@media (max-width: 768px) {
+  .hero-section h1 {
+    font-size: 2rem;
+  }
+  .model-cards {
+    grid-template-columns: 1fr;
+  }
+  .model-card {
+    padding: 15px;
+  }
+  .price {
+    font-size: 1.6rem;
+  }
+  .why-choose-section {
+    margin: 30px auto;
+  }
+  .final-cta-section h2 {
+    font-size: 1.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-section {
+    padding: 40px 10px;
+  }
+  .models-section h2 {
+    font-size: 1.7rem;
+  }
+  .model-card h3 {
+    font-size: 1.4rem;
+  }
+  .benefits-list {
+    font-size: 0.95rem;
+  }
+}

@@ -13,6 +13,7 @@ import Contact from "../components/Contact";
 import FAQ from "../components/FAQ";
 import Example from "../components/Example";
 import VideoGenerator from "../components/VideoGenerator";
+import Pricing from "../components/Pricing"; // Added Pricing component
 
 const ProtectedRoute = ({ children }) => {
   const navigate = useNavigate();
@@ -42,7 +43,9 @@ const AppRoutes = () => {
       <Route path="/learn" element={<Learn />} />
       <Route path="/contact" element={<Contact />} />
       <Route path="/example" element={<Example />} />
-      <Route path="/faq" element={<FAQ />} /> {/* Updated to lowercase /faq */}
+      <Route path="/faq" element={<FAQ />} />
+      <Route path="/pricing" element={<Pricing />} />{" "}
+      {/* Added Pricing route */}
       <Route
         path="/generator"
         element={

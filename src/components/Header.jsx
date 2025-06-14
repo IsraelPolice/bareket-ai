@@ -33,6 +33,8 @@ function Header() {
     "/learn",
     "/contact",
     "/example",
+    "/faq", // Existing public pages
+    "/pricing", // Added pricing page
   ].includes(location.pathname);
 
   return (
@@ -59,10 +61,12 @@ function Header() {
                   Example
                 </Link>
                 <Link className="nav-link" to="/faq">
-                  {" "}
-                  {/* Added FAQ link */}
                   FAQ
                 </Link>
+                <Link className="nav-link" to="/pricing">
+                  Pricing
+                </Link>{" "}
+                {/* Added Pricing link */}
               </div>
               <button
                 className="btn btn-primary go-to-app-btn"
