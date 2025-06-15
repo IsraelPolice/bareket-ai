@@ -434,19 +434,14 @@ app.post("/generate-video", async (req, res) => {
           error: `Insufficient credits. Requires ${creditCost} credits.`,
         });
       }
-
-      console.log(`Updating credits for user ${userId}...`);
-      await creditsRef.update({ value: currentCredits - creditCost });
-      console.log("Credits updated to:", currentCredits - creditCost);
-      currentCredits -= creditCost;
     } catch (firestoreError) {
-      console.error("Firestore error during credits check/update:", {
+      console.error("Firestore error during credits check:", {
         message: firestoreError.message,
         code: firestoreError.code,
-        stack: firestoreError.code,
+        stack: firestoreError.stack,
       });
       throw new Error(
-        `Failed to update credits in Firestore: ${firestoreError.message}`
+        `Failed to check credits in Firestore: ${firestoreError.message}`
       );
     }
 
@@ -480,6 +475,7 @@ app.post("/generate-video", async (req, res) => {
       userId,
     });
 
+    // Create prediction without deducting credits yet
     const prediction = await replicate.predictions.create({
       version: cleanedModel,
       input,
@@ -494,6 +490,25 @@ app.post("/generate-video", async (req, res) => {
     if (!prediction?.id) {
       console.error("No prediction ID in response:", prediction);
       throw new Error("No prediction ID returned from Replicate");
+    }
+
+    // Deduct credits only after successful prediction creation
+    try {
+      console.log(`Updating credits for user ${userId} after prediction...`);
+      const creditsRef = db.doc(`users/${userId}/credits/current`);
+      await creditsRef.update({ value: currentCredits - creditCost });
+      console.log("Credits updated to:", currentCredits - creditCost);
+    } catch (firestoreError) {
+      console.error("Firestore error during credits update:", {
+        message: firestoreError.message,
+        code: firestoreError.code,
+        stack: firestoreError.stack,
+      });
+      // If credit deduction fails, cancel the prediction and return error
+      await replicate.predictions.cancel(prediction.id);
+      throw new Error(
+        `Failed to deduct credits in Firestore: ${firestoreError.message}`
+      );
     }
 
     try {
@@ -529,6 +544,7 @@ app.post("/generate-video", async (req, res) => {
         code: firestoreError.code,
         stack: firestoreError.stack,
       });
+      // Optional: Rollback credits if job save fails (not implemented here to avoid complexity)
     }
 
     res.json({ predictionId: prediction.id, status: prediction.status });
@@ -540,7 +556,6 @@ app.post("/generate-video", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get("/check-status/:predictionId", async (req, res) => {
   try {
     const { predictionId } = req.params;
