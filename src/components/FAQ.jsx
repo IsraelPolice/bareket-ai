@@ -201,6 +201,8 @@ const FAQ = () => {
           name="keywords"
           content="SaturnGenix FAQ, AI video generator support, SaturnGenix help"
         />
+        <link rel="canonical" href="https://www.saturngenix.com/faq" />{" "}
+        {/* Added */}
       </Helmet>
       <div className="main-content">
         <h1 className="contact-title">

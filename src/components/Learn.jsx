@@ -29,6 +29,8 @@ const Learn = () => {
           content="https://www.saturngenix.com/assets/learn-video-preview.jpg"
         />
         <meta property="og:url" content="https://www.saturngenix.com/learn" />
+        <link rel="canonical" href="https://www.saturngenix.com/learn" />{" "}
+        {/* Added */}
       </Helmet>
 
       <section className="hero-section">

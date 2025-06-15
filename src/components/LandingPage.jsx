@@ -105,6 +105,8 @@ function LandingPage() {
         />
         <meta property="og:url" content="https://www.saturngenix.com/" />
         <meta name="twitter:card" content="summary_large_image" />
+        <link rel="canonical" href="https://www.saturngenix.com/" />{" "}
+        {/* Added */}
       </Helmet>
 
       <video

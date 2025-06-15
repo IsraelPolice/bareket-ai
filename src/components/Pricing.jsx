@@ -26,6 +26,8 @@ const Pricing = () => {
           content="https://www.saturngenix.com/assets/pricing-preview.jpg"
         />
         <meta property="og:url" content="https://www.saturngenix.com/pricing" />
+        <link rel="canonical" href="https://www.saturngenix.com/pricing" />{" "}
+        {/* Added */}
       </Helmet>
 
       <section className="hero-section">

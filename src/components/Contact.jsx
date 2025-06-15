@@ -52,6 +52,8 @@ const Contact = () => {
           name="keywords"
           content="contact SaturnGenix, AI video support, SaturnGenix support"
         />
+        <link rel="canonical" href="https://www.saturngenix.com/contact" />{" "}
+        {/* Added */}
       </Helmet>
       <div className="main-content">
         <h1 className="contact-title">Contact Us</h1>

@@ -29,6 +29,8 @@ const Examples = () => {
           content="https://www.saturngenix.com/assets/example-video-preview.jpg"
         />
         <meta property="og:url" content="https://www.saturngenix.com/example" />
+        <link rel="canonical" href="https://www.saturngenix.com/example" />{" "}
+        {/* Added */}
       </Helmet>
 
       <section className="hero-section">

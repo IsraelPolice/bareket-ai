@@ -32,6 +32,8 @@ const Features = () => {
           property="og:url"
           content="https://www.saturngenix.com/features"
         />
+        <link rel="canonical" href="https://www.saturngenix.com/features" />{" "}
+        {/* Added */}
       </Helmet>
 
       <section className="hero-section">
