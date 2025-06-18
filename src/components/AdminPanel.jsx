@@ -149,6 +149,34 @@ const AdminPanel = () => {
     }
   };
 
+  const initiatePayPalPayment = async (amount, creditsToAdd) => {
+    const user = auth.currentUser;
+    if (!user) {
+      setError("Please sign in.");
+      return;
+    }
+    const userId = user.uid;
+    try {
+      const response = await fetch(
+        "https://saturn-backend-sdht.onrender.com/create-paypal-payment",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "user-id": userId },
+          body: JSON.stringify({ amount, credits: creditsToAdd }),
+        }
+      );
+      if (!response.ok)
+        throw new Error(
+          (await response.json()).error || `HTTP error: ${response.status}`
+        );
+      const data = await response.json();
+      if (data.paymentUrl) window.location.href = data.paymentUrl;
+    } catch (error) {
+      console.error("Error initiating PayPal payment:", error.message);
+      setError(`Error initiating payment: ${error.message}`);
+    }
+  };
+
   const handleBuyCredits = () => {
     window.location.href = "/pricing";
   };

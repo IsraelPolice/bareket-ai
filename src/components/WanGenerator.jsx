@@ -7,7 +7,12 @@ import {
   setDoc,
   onSnapshot,
 } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+} from "firebase/storage";
 import "../styles/GeneratorStyles.css";
 
 const WanGenerator = () => {
@@ -47,7 +52,7 @@ const WanGenerator = () => {
       const response = await fetch(videoUrl);
       const blob = await response.blob();
       const fileName = `users/${userId}/videos/video-${Date.now()}.mp4`;
-      const storageRef = ref(storage, fileName);
+      const storageRef = storageRef(storage, fileName);
       await uploadBytes(storageRef, blob);
       const url = await getDownloadURL(storageRef);
       return url;
@@ -100,7 +105,7 @@ const WanGenerator = () => {
         setLoading(false);
       }
     },
-    [auth, prompt]
+    [auth, prompt, saveVideoToStorage]
   );
 
   useEffect(() => {
