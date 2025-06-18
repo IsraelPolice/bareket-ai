@@ -6,7 +6,11 @@ import {
   getDoc,
   setDoc,
   onSnapshot,
+  ref,
+  uploadBytes,
+  getDownloadURL,
 } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 import "../styles/GeneratorStyles.css";
 
 const WanGenerator = () => {
@@ -27,13 +31,12 @@ const WanGenerator = () => {
 
   const auth = getAuth();
   const db = getFirestore();
+  const storage = getStorage();
 
   // Calculate credits cost based on duration (WanGenerator doesn't have quality)
   const calculateCreditsCost = () => {
-    let baseCredits = 6; // Base cost for 5 seconds
-    if (duration === "10") {
-      baseCredits *= 2; // Double the cost for 10 seconds
-    }
+    let baseCredits = 8; // Base cost for 5 seconds
+    if (duration === "10") baseCredits *= 2; // Double the cost for 10 seconds
     return baseCredits;
   };
 
@@ -43,6 +46,21 @@ const WanGenerator = () => {
     localStorage.setItem("activeJobs", JSON.stringify(activeJobs));
   }, [activeJobs]);
 
+  const saveVideoToStorage = async (videoUrl, userId, prompt) => {
+    try {
+      const response = await fetch(videoUrl);
+      const blob = await response.blob();
+      const fileName = `users/${userId}/videos/video-${Date.now()}.mp4`;
+      const storageRef = ref(storage, fileName);
+      await uploadBytes(storageRef, blob);
+      const url = await getDownloadURL(storageRef);
+      return url;
+    } catch (error) {
+      console.error("Error saving video to Storage:", error.message);
+      return videoUrl; // Fallback to original URL if failed
+    }
+  };
+
   const checkJobStatus = useCallback(
     async (predictionId) => {
       try {
@@ -51,24 +69,20 @@ const WanGenerator = () => {
         const userId = user.uid;
         let status = "processing";
         while (status === "processing") {
-          console.log(`Checking status for prediction: ${predictionId}`);
           const response = await fetch(
             `https://saturn-backend-sdht.onrender.com/check-status/${predictionId}`,
-            {
-              headers: { "user-id": userId },
-            }
+            { headers: { "user-id": userId } }
           );
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(
-              errorData.error || `HTTP error: ${response.status}`
-            );
-          }
+          if (!response.ok) throw new Error(await response.text());
           const data = await response.json();
-          console.log("Status response:", data);
           status = data.status;
           if (status === "succeeded" && data.videoUrl) {
-            setCurrentVideo(data.videoUrl);
+            const savedUrl = await saveVideoToStorage(
+              data.videoUrl,
+              userId,
+              prompt
+            );
+            setCurrentVideo(savedUrl);
             setLoading(false);
             setActiveJobs((prevJobs) =>
               prevJobs.filter((job) => job.predictionId !== predictionId)
@@ -87,13 +101,10 @@ const WanGenerator = () => {
       } catch (error) {
         console.error("Error in checkJobStatus:", error.message);
         setError(`Error checking job: ${error.message}`);
-        setActiveJobs((prevJobs) =>
-          prevJobs.filter((job) => job.predictionId !== predictionId)
-        );
         setLoading(false);
       }
     },
-    [auth]
+    [auth, prompt]
   );
 
   useEffect(() => {
@@ -297,12 +308,31 @@ const WanGenerator = () => {
         throw new Error(errorData.error || `HTTP error: ${response.status}`);
       }
       const data = await response.json();
-      if (data.paymentUrl) {
-        window.location.href = data.paymentUrl;
-      }
+      if (data.paymentUrl) window.location.href = data.paymentUrl;
     } catch (error) {
       console.error("Error initiating PayPal payment:", error.message);
       setError(`Error initiating payment: ${error.message}`);
+    }
+  };
+
+  const handleDeleteVideo = async (index) => {
+    const userId = auth.currentUser.uid;
+    const videoToDelete = previousVideos[index];
+    const updatedVideos = previousVideos.filter((_, i) => i !== index);
+    setPreviousVideos(updatedVideos);
+
+    try {
+      const videosRef = doc(db, "users", userId, "videos", "list");
+      const snap = await getDoc(videosRef);
+      if (snap.exists()) {
+        const updatedList = snap
+          .data()
+          .list.filter((item) => item.src !== videoToDelete.src);
+        await setDoc(videosRef, { list: updatedList }, { merge: true });
+      }
+    } catch (error) {
+      console.error("Error deleting video:", error.message);
+      setError("Failed to delete video");
     }
   };
 
@@ -422,7 +452,11 @@ const WanGenerator = () => {
       <div className="content-wrapper">
         <div className="preview-section">
           {currentVideo && !loading && (
-            <video controls className="preview-media">
+            <video
+              controls
+              className="preview-media"
+              style={{ maxWidth: "300px", maxHeight: "200px" }}
+            >
               <source src={currentVideo} type="video/mp4" />
             </video>
           )}
@@ -432,9 +466,34 @@ const WanGenerator = () => {
           <div className="media-grid">
             {previousVideos.map((vid, index) => (
               <div key={index} className="media-item">
-                <video controls>
+                <video
+                  controls
+                  style={{ maxWidth: "300px", maxHeight: "200px" }}
+                >
                   <source src={vid.src} type="video/mp4" />
                 </video>
+                <div className="media-details">
+                  <p>Prompt: {vid.prompt || "No prompt"}</p>
+                  <button
+                    className="download-btn"
+                    onClick={() => {
+                      const link = document.createElement("a");
+                      link.href = vid.src;
+                      link.download = `video-${Date.now()}.mp4`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                  >
+                    Download
+                  </button>
+                  <button
+                    className="delete-btn"
+                    onClick={() => handleDeleteVideo(index)}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
           </div>

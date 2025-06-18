@@ -111,14 +111,36 @@ async function uploadImageToFirebase(dataUrl, path, userId) {
   }
 }
 
+async function uploadVideoToFirebase(videoUrl, path, userId) {
+  try {
+    console.log(`Uploading video to (${path}) for user ${userId}`);
+    const response = await fetch(videoUrl);
+    const blob = await response.blob();
+    const bucket = storage.bucket();
+    const file = bucket.file(path);
+    await file.save(blob, { metadata: { contentType: "video/mp4" } });
+    const [url] = await file.getSignedUrl({
+      action: "read",
+      expires: "03-09-2491",
+    });
+    console.log("Video uploaded successfully:", url);
+    return url;
+  } catch (error) {
+    console.error("Error uploading video:", {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+    });
+    throw error;
+  }
+}
+
 // Create PayPal Payment
 app.post("/create-paypal-payment", async (req, res) => {
   const { amount, credits } = req.body;
   const userId = req.headers["user-id"];
 
-  if (!userId) {
-    return res.status(401).json({ error: "User ID is required" });
-  }
+  if (!userId) return res.status(401).json({ error: "User ID is required" });
 
   const create_payment_json = {
     intent: "sale",
@@ -129,10 +151,7 @@ app.post("/create-paypal-payment", async (req, res) => {
     },
     transactions: [
       {
-        amount: {
-          total: amount.toFixed(2),
-          currency: "USD",
-        },
+        amount: { total: amount.toFixed(2), currency: "USD" },
         description: `Purchase of ${credits} credits for image generation`,
       },
     ],
@@ -168,9 +187,7 @@ app.get("/success", async (req, res) => {
     return res.status(400).send("Missing required query parameters");
   }
 
-  const execute_payment_json = {
-    payer_id: PayerID,
-  };
+  const execute_payment_json = { payer_id: PayerID };
 
   paypal.payment.execute(
     paymentId,
@@ -185,12 +202,6 @@ app.get("/success", async (req, res) => {
       }
       try {
         console.log(`Attempting to update credits for user ${userId}...`);
-        const testRef = db.doc("test/connection");
-        await testRef.set({ timestamp: new Date().toISOString() });
-        console.log(
-          "Firestore connection re-test successful before updating credits"
-        );
-
         const creditsRef = db.doc(`users/${userId}/credits/current`);
         const creditsSnap = await creditsRef.get();
         const docExists =
@@ -320,23 +331,6 @@ app.post("/generate-image", async (req, res) => {
         });
       }
 
-      // Deduct 1 credit for image generation
-      const creditsRef = db.doc(`users/${userId}/credits/current`);
-      const creditsSnap = await creditsRef.get();
-      const docExists =
-        typeof creditsSnap.exists === "function"
-          ? creditsSnap.exists()
-          : creditsSnap.exists;
-      const currentCredits = docExists ? creditsSnap.data().value : 0;
-      if (currentCredits < 1) {
-        console.log("Insufficient credits:", { currentCredits });
-        return res
-          .status(400)
-          .json({ error: "Insufficient credits. Requires 1 credit." });
-      }
-      await creditsRef.update({ value: currentCredits - 1 });
-      console.log("Credits updated to:", currentCredits - 1);
-
       res.json({ predictionId: prediction.id, status: prediction.status });
     } else {
       return res
@@ -430,23 +424,20 @@ app.post("/generate-video", async (req, res) => {
 
       if (currentCredits < creditCost) {
         console.log("Insufficient credits:", { currentCredits, creditCost });
-        return res.status(400).json({
-          error: `Insufficient credits. Requires ${creditCost} credits.`,
-        });
+        return res
+          .status(400)
+          .json({
+            error: `Insufficient credits. Requires ${creditCost} credits.`,
+          });
       }
-
-      console.log(`Updating credits for user ${userId}...`);
-      await creditsRef.update({ value: currentCredits - creditCost });
-      console.log("Credits updated to:", currentCredits - creditCost);
-      currentCredits -= creditCost;
     } catch (firestoreError) {
-      console.error("Firestore error during credits check/update:", {
+      console.error("Firestore error during credits check:", {
         message: firestoreError.message,
         code: firestoreError.code,
-        stack: firestoreError.code,
+        stack: firestoreError.stack,
       });
       throw new Error(
-        `Failed to update credits in Firestore: ${firestoreError.message}`
+        `Failed to check credits in Firestore: ${firestoreError.message}`
       );
     }
 
@@ -494,41 +485,6 @@ app.post("/generate-video", async (req, res) => {
     if (!prediction?.id) {
       console.error("No prediction ID in response:", prediction);
       throw new Error("No prediction ID returned from Replicate");
-    }
-
-    try {
-      console.log(`Saving job to Firestore for user ${userId}...`);
-      const jobRef = db.doc(`users/${userId}/videoJobs/${prediction.id}`);
-      await jobRef.set({
-        predictionId: prediction.id,
-        status: prediction.status,
-        prompt,
-        model: cleanedModel,
-        createdAt: new Date().toISOString(),
-      });
-      console.log("Job saved");
-
-      console.log(`Updating active jobs for user ${userId}...`);
-      const activeJobsRef = db.doc(`users/${userId}/activeJobs/list`);
-      const activeSnap = await activeJobsRef.get();
-      const docExists =
-        typeof activeSnap.exists === "function"
-          ? activeSnap.exists()
-          : activeSnap.exists;
-      const jobs = docExists ? activeSnap.data().jobs || [] : [];
-      jobs.push({
-        predictionId: prediction.id,
-        prompt,
-        createdAt: new Date().toISOString(),
-      });
-      await activeJobsRef.set({ jobs }, { merge: true });
-      console.log("Active jobs updated");
-    } catch (firestoreError) {
-      console.error("Firestore error during job save:", {
-        message: firestoreError.message,
-        code: firestoreError.code,
-        stack: firestoreError.stack,
-      });
     }
 
     res.json({ predictionId: prediction.id, status: prediction.status });
@@ -610,25 +566,57 @@ app.get("/check-status/:predictionId", async (req, res) => {
       const outputUrl = Array.isArray(prediction.output)
         ? prediction.output[0]
         : prediction.output;
+      let savedUrl = outputUrl;
+
+      // Save video to Firebase Storage and deduct credits
+      if (
+        prediction.version.startsWith("pixverse") ||
+        prediction.version.startsWith("wavespeedai")
+      ) {
+        savedUrl = await uploadVideoToFirebase(
+          outputUrl,
+          `users/${userId}/videos/video-${predictionId}.mp4`,
+          userId
+        );
+        try {
+          const creditsRef = db.doc(`users/${userId}/credits/current`);
+          await creditsRef.update({
+            value: currentCredits - jobData.creditCost || 0,
+          });
+          console.log(
+            "Credits deducted after successful video generation:",
+            currentCredits - (jobData.creditCost || 0)
+          );
+        } catch (firestoreError) {
+          console.error("Firestore error during credits deduction:", {
+            message: firestoreError.message,
+            code: firestoreError.code,
+            stack: firestoreError.stack,
+          });
+          throw new Error(
+            `Failed to deduct credits: ${firestoreError.message}`
+          );
+        }
+      }
 
       try {
         console.log(`Saving output to Firestore for user ${userId}...`);
-        const collectionRef =
-          prediction.version ===
-          "stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc"
-            ? db.doc(`users/${userId}/images/list`)
-            : db.doc(`users/${userId}/videos/list`);
+        const collectionRef = db.doc(
+          `users/${userId}/${
+            prediction.version.startsWith("stability") ? "images" : "videos"
+          }/list`
+        );
         const snap = await collectionRef.get();
         const docExists =
           typeof snap.exists === "function" ? snap.exists() : snap.exists;
         const items = docExists ? snap.data().list || [] : [];
         items.push({
-          src: outputUrl,
+          src: savedUrl,
           prompt: jobData.prompt || "Unknown prompt",
           createdAt: new Date().toISOString(),
         });
         await collectionRef.set({ list: items }, { merge: true });
-        console.log("Output saved to Firestore:", outputUrl);
+        console.log("Output saved to Firestore:", savedUrl);
 
         console.log(`Removing from active jobs for user ${userId}...`);
         const activeJobsRef = db.doc(`users/${userId}/activeJobs/list`);
@@ -654,15 +642,13 @@ app.get("/check-status/:predictionId", async (req, res) => {
           .json({ error: "Failed to save output to Firestore" });
       }
 
-      const responseKey =
-        prediction.version ===
-        "stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc"
-          ? "imageUrl"
-          : "videoUrl";
+      const responseKey = prediction.version.startsWith("stability")
+        ? "imageUrl"
+        : "videoUrl";
       return res.json({
         status: prediction.status,
-        [responseKey]: outputUrl,
-        value: currentCredits,
+        [responseKey]: savedUrl,
+        value: currentCredits - (jobData.creditCost || 0),
       });
     } else if (
       prediction.status === "failed" ||

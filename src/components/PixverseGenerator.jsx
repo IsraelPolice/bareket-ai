@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { getAuth } from "firebase/auth";
-import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+} from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 import "../styles/GeneratorStyles.css";
 
 const PixverseGenerator = () => {
@@ -20,16 +29,15 @@ const PixverseGenerator = () => {
 
   const auth = getAuth();
   const db = getFirestore();
+  const storage = getStorage();
 
   // Calculate credits cost based on duration and quality
   const calculateCreditsCost = () => {
     let baseCredits;
-    if (quality === "540p") baseCredits = 6; // Lowest quality
-    else if (quality === "720p") baseCredits = 9; // Medium quality
-    else if (quality === "1080p") baseCredits = 12; // Highest quality
-    if (duration === "10") {
-      baseCredits *= 2; // Double the cost for 10 seconds
-    }
+    if (quality === "540p") baseCredits = 6;
+    else if (quality === "720p") baseCredits = 9;
+    else if (quality === "1080p") baseCredits = 12;
+    if (duration === "10") baseCredits *= 2;
     return baseCredits;
   };
 
@@ -39,6 +47,21 @@ const PixverseGenerator = () => {
     localStorage.setItem("activeJobs", JSON.stringify(activeJobs));
   }, [activeJobs]);
 
+  const saveVideoToStorage = async (videoUrl, userId, prompt) => {
+    try {
+      const response = await fetch(videoUrl);
+      const blob = await response.blob();
+      const fileName = `users/${userId}/videos/video-${Date.now()}.mp4`;
+      const storageRef = ref(storage, fileName);
+      await uploadBytes(storageRef, blob);
+      const url = await getDownloadURL(storageRef);
+      return url;
+    } catch (error) {
+      console.error("Error saving video to Storage:", error.message);
+      return videoUrl; // Fallback to original URL if failed
+    }
+  };
+
   const checkJobStatus = useCallback(
     async (predictionId) => {
       try {
@@ -47,30 +70,22 @@ const PixverseGenerator = () => {
         const userId = user.uid;
         let status = "processing";
         while (status === "processing") {
-          console.log(`Checking status for prediction: ${predictionId}`);
           const response = await fetch(
             `https://saturn-backend-sdht.onrender.com/check-status/${predictionId}`,
-            {
-              headers: { "user-id": userId },
-            }
+            { headers: { "user-id": userId } }
           );
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Failed to check status: ${errorText}`);
-          }
+          if (!response.ok) throw new Error(await response.text());
           const data = await response.json();
-          console.log("Status response:", data);
           status = data.status;
           if (status === "succeeded" && data.videoUrl) {
-            setCurrentVideo(data.videoUrl); // עדכון מיידי
+            const savedUrl = await saveVideoToStorage(
+              data.videoUrl,
+              userId,
+              prompt
+            );
+            setCurrentVideo(savedUrl);
             setCredits(data.value);
-            const creditsRef = doc(db, "users", userId, "credits", "current");
-            const creditsSnap = await getDoc(creditsRef);
-            if (creditsSnap.exists()) setCredits(creditsSnap.data().value);
-            const videosRef = doc(db, "users", userId, "videos", "list");
-            const videosSnap = await getDoc(videosRef);
-            if (videosSnap.exists())
-              setPreviousVideos(videosSnap.data().list || []);
+            setLoading(false);
             setActiveJobs((prevJobs) =>
               prevJobs.filter((job) => job.predictionId !== predictionId)
             );
@@ -80,6 +95,7 @@ const PixverseGenerator = () => {
             setActiveJobs((prevJobs) =>
               prevJobs.filter((job) => job.predictionId !== predictionId)
             );
+            setLoading(false);
             break;
           }
           await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -87,14 +103,10 @@ const PixverseGenerator = () => {
       } catch (error) {
         console.error("Error in checkJobStatus:", error.message);
         setError(`Error checking job: ${error.message}`);
-        setActiveJobs((prevJobs) =>
-          prevJobs.filter((job) => job.predictionId !== predictionId)
-        );
-      } finally {
         setLoading(false);
       }
     },
-    [auth, db]
+    [auth, prompt]
   );
 
   useEffect(() => {
@@ -138,25 +150,21 @@ const PixverseGenerator = () => {
       try {
         const creditsRef = doc(db, "users", userId, "credits", "current");
         const creditsSnap = await getDoc(creditsRef);
-        if (creditsSnap.exists()) {
-          setCredits(creditsSnap.data().value);
-        } else {
+        if (creditsSnap.exists()) setCredits(creditsSnap.data().value);
+        else {
           await setDoc(creditsRef, { value: 10 });
           setCredits(10);
         }
         const videosRef = doc(db, "users", userId, "videos", "list");
         const videosSnap = await getDoc(videosRef);
-        if (videosSnap.exists()) {
+        if (videosSnap.exists())
           setPreviousVideos(videosSnap.data().list || []);
-        } else {
-          await setDoc(videosRef, { list: [] }, { merge: true });
-        }
+        else await setDoc(videosRef, { list: [] }, { merge: true });
         const savedJobs = JSON.parse(
           localStorage.getItem("activeJobs") || "[]"
         );
-        if (savedJobs.length > 0) {
+        if (savedJobs.length > 0)
           savedJobs.forEach((job) => checkJobStatus(job.predictionId));
-        }
       } catch (err) {
         console.error("Error loading initial data:", err.message);
         setError(`Error fetching data: ${err.message}`);
@@ -200,15 +208,11 @@ const PixverseGenerator = () => {
         }
       );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText);
-      }
+      if (!response.ok) throw new Error(await response.text());
       const data = await response.json();
       console.log("Generate response:", data);
-      if (!data.predictionId) {
+      if (!data.predictionId)
         throw new Error("No prediction ID returned from server.");
-      }
       setActiveJobs((prevJobs) => [
         ...prevJobs,
         { predictionId: data.predictionId, prompt, createdAt: Date.now() },
@@ -241,17 +245,36 @@ const PixverseGenerator = () => {
           body: JSON.stringify({ amount, credits: creditsToAdd }),
         }
       );
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP error: ${response.status}`);
-      }
+      if (!response.ok)
+        throw new Error(
+          (await response.json()).error || `HTTP error: ${response.status}`
+        );
       const data = await response.json();
-      if (data.paymentUrl) {
-        window.location.href = data.paymentUrl;
-      }
+      if (data.paymentUrl) window.location.href = data.paymentUrl;
     } catch (error) {
       console.error("Error initiating PayPal payment:", error.message);
       setError(`Error initiating payment: ${error.message}`);
+    }
+  };
+
+  const handleDeleteVideo = async (index) => {
+    const userId = auth.currentUser.uid;
+    const videoToDelete = previousVideos[index];
+    const updatedVideos = previousVideos.filter((_, i) => i !== index);
+    setPreviousVideos(updatedVideos);
+
+    try {
+      const videosRef = doc(db, "users", userId, "videos", "list");
+      const snap = await getDoc(videosRef);
+      if (snap.exists()) {
+        const updatedList = snap
+          .data()
+          .list.filter((item) => item.src !== videoToDelete.src);
+        await setDoc(videosRef, { list: updatedList }, { merge: true });
+      }
+    } catch (error) {
+      console.error("Error deleting video:", error.message);
+      setError("Failed to delete video");
     }
   };
 
@@ -357,7 +380,11 @@ const PixverseGenerator = () => {
       <div className="content-wrapper">
         <div className="preview-section">
           {currentVideo && !loading && (
-            <video controls className="preview-media">
+            <video
+              controls
+              className="preview-media"
+              style={{ maxWidth: "300px", maxHeight: "200px" }}
+            >
               <source src={currentVideo} type="video/mp4" />
             </video>
           )}
@@ -367,9 +394,34 @@ const PixverseGenerator = () => {
           <div className="media-grid">
             {previousVideos.map((vid, index) => (
               <div key={index} className="media-item">
-                <video controls>
+                <video
+                  controls
+                  style={{ maxWidth: "300px", maxHeight: "200px" }}
+                >
                   <source src={vid.src} type="video/mp4" />
                 </video>
+                <div className="media-details">
+                  <p>Prompt: {vid.prompt || "No prompt"}</p>
+                  <button
+                    className="download-btn"
+                    onClick={() => {
+                      const link = document.createElement("a");
+                      link.href = vid.src;
+                      link.download = `video-${Date.now()}.mp4`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                  >
+                    Download
+                  </button>
+                  <button
+                    className="delete-btn"
+                    onClick={() => handleDeleteVideo(index)}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
           </div>

@@ -9,20 +9,21 @@ import {
 import "../styles/MyAccountStyles.css";
 
 const AdminPanel = () => {
-  const [previousPrompts, setPreviousPrompts] = useState([]); // Combine images and videos
+  const [previousPrompts, setPreviousPrompts] = useState([]);
   const [activeSection, setActiveSection] = useState("previousPrompts");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [userEmail, setUserEmail] = useState("");
 
   useEffect(() => {
     const fetchPrompts = async () => {
       const user = auth.currentUser;
       if (user) {
         const userId = user.uid;
-        // Fetch images and videos
+        setUserEmail(user.email); // Set user email
         const imagesRef = doc(db, "users", userId, "images", "list");
         const videosRef = doc(db, "users", userId, "videos", "list");
         try {
@@ -33,37 +34,28 @@ const AdminPanel = () => {
 
           let prompts = [];
 
-          // Combine images
           if (imagesSnap.exists()) {
             const imagesData = imagesSnap.data().list || [];
             prompts = [
               ...prompts,
               ...imagesData.map((item) => ({ ...item, type: "image" })),
             ];
-          } else {
-            await setDoc(imagesRef, { list: [] }, { merge: true });
-          }
+          } else await setDoc(imagesRef, { list: [] }, { merge: true });
 
-          // Combine videos
           if (videosSnap.exists()) {
             const videosData = videosSnap.data().list || [];
             prompts = [
               ...prompts,
               ...videosData.map((item) => ({ ...item, type: "video" })),
             ];
-          } else {
-            await setDoc(videosRef, { list: [] }, { merge: true });
-          }
+          } else await setDoc(videosRef, { list: [] }, { merge: true });
 
-          // Sort by timestamp if available
-          prompts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          prompts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
           setPreviousPrompts(prompts);
         } catch (err) {
           setError("Failed to fetch prompts: " + err.message);
         }
-      } else {
-        setError("Please sign in to access your prompts.");
-      }
+      } else setError("Please sign in to access your prompts.");
     };
     fetchPrompts();
   }, []);
@@ -81,29 +73,25 @@ const AdminPanel = () => {
           const imagesRef = doc(db, "users", userId, "images", "list");
           const imagesSnap = await getDoc(imagesRef);
           if (imagesSnap.exists()) {
-            const imagesData = imagesSnap.data().list || [];
-            const updatedImages = imagesData.filter(
-              (item) => item.src !== promptToDelete.src
-            );
+            const updatedImages = imagesSnap
+              .data()
+              .list.filter((item) => item.src !== promptToDelete.src);
             await updateDoc(imagesRef, { list: updatedImages });
           }
         } else if (promptToDelete.type === "video") {
           const videosRef = doc(db, "users", userId, "videos", "list");
           const videosSnap = await getDoc(videosRef);
           if (videosSnap.exists()) {
-            const videosData = videosSnap.data().list || [];
-            const updatedVideos = videosData.filter(
-              (item) => item.src !== promptToDelete.src
-            );
+            const updatedVideos = videosSnap
+              .data()
+              .list.filter((item) => item.src !== promptToDelete.src);
             await updateDoc(videosRef, { list: updatedVideos });
           }
         }
       } catch (err) {
         setError("Failed to delete prompt: " + err.message);
       }
-    } else {
-      setError("Please sign in to delete prompts.");
-    }
+    } else setError("Please sign in to delete prompts.");
   };
 
   const downloadPrompt = (prompt, alt) => {
@@ -116,9 +104,7 @@ const AdminPanel = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } else {
-      setError("Prompt source is missing.");
-    }
+    } else setError("Prompt source is missing.");
   };
 
   const handleChangePassword = async (e) => {
@@ -141,24 +127,18 @@ const AdminPanel = () => {
       }
       const userId = user.uid;
 
-      // Reauthenticate the user
       const credential = EmailAuthProvider.credential(
         user.email,
         currentPassword
       );
       await reauthenticateWithCredential(user, credential);
 
-      // Update the password
       await updatePassword(user, password);
 
-      // Update Firestore document (if necessary)
       const userRef = doc(db, "users", userId);
       const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        await updateDoc(userRef, { password });
-      } else {
-        await setDoc(userRef, { password }, { merge: true });
-      }
+      if (userSnap.exists()) await updateDoc(userRef, { password });
+      else await setDoc(userRef, { password }, { merge: true });
 
       setSuccess("Password updated successfully!");
       setPassword("");
@@ -167,6 +147,10 @@ const AdminPanel = () => {
     } catch (err) {
       setError("Failed to update password: " + err.message);
     }
+  };
+
+  const handleBuyCredits = () => {
+    window.location.href = "/pricing"; // Redirect to pricing page
   };
 
   return (
@@ -205,6 +189,14 @@ const AdminPanel = () => {
             onClick={() => setActiveSection("buyCredits")}
           >
             Buy Credits
+          </button>
+          <button
+            className={`nav-link ${
+              activeSection === "contact" ? "active" : ""
+            }`}
+            onClick={() => setActiveSection("contact")}
+          >
+            Contact
           </button>
         </nav>
       </div>
@@ -261,17 +253,22 @@ const AdminPanel = () => {
                     {prompt.type === "image" ? (
                       <img
                         src={prompt.src}
-                        alt={prompt.alt || "Image"}
+                        alt={prompt.prompt || "Image"}
                         className="media-preview"
+                        style={{ maxWidth: "300px", maxHeight: "200px" }}
                       />
                     ) : (
-                      <video controls className="media-preview">
+                      <video
+                        controls
+                        className="media-preview"
+                        style={{ maxWidth: "300px", maxHeight: "200px" }}
+                      >
                         <source src={prompt.src} type="video/mp4" />
                         Your browser does not support the video tag.
                       </video>
                     )}
                     <div className="media-details">
-                      <p>{prompt.alt || "No description"}</p>
+                      <p>Prompt: {prompt.prompt || "No prompt"}</p>
                       <div className="media-actions">
                         <button
                           className="delete-btn"
@@ -281,7 +278,7 @@ const AdminPanel = () => {
                         </button>
                         <button
                           className="download-btn"
-                          onClick={() => downloadPrompt(prompt, prompt.alt)}
+                          onClick={() => downloadPrompt(prompt, prompt.prompt)}
                         >
                           Download
                         </button>
@@ -304,9 +301,41 @@ const AdminPanel = () => {
         {activeSection === "buyCredits" && (
           <div className="section-content">
             <h2>Buy Credits</h2>
-            <p className="no-content">Credit purchase options coming soon.</p>
+            <div className="credit-options">
+              <button
+                onClick={() => initiatePayPalPayment(6.99, 72)}
+                className="credit-option-btn"
+              >
+                72 Credits for $6.99 (12 Basic Videos)
+              </button>
+              <button
+                onClick={() => initiatePayPalPayment(13.99, 150)}
+                className="credit-option-btn"
+              >
+                150 Credits for $13.99 (24 Basic Videos)
+              </button>
+              <button
+                onClick={() => initiatePayPalPayment(25.99, 300)}
+                className="credit-option-btn"
+              >
+                300 Credits for $25.99 (36 Basic Videos)
+              </button>
+            </div>
           </div>
         )}
+        {activeSection === "contact" && (
+          <div className="section-content">
+            <h2>Contact</h2>
+            <p>
+              Email:{" "}
+              <a href="mailto:info@saturngenix.com">info@saturngenix.com</a>
+            </p>
+            <p>
+              <a href="/faq">FAQ</a>
+            </p>
+          </div>
+        )}
+        {userEmail && <p className="user-email">Logged in as: {userEmail}</p>}
       </div>
     </div>
   );
