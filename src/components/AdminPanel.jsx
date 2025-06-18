@@ -23,7 +23,7 @@ const AdminPanel = () => {
       const user = auth.currentUser;
       if (user) {
         const userId = user.uid;
-        setUserEmail(user.email); // Set user email
+        setUserEmail(user.email);
         const imagesRef = doc(db, "users", userId, "images", "list");
         const videosRef = doc(db, "users", userId, "videos", "list");
         try {
@@ -150,7 +150,7 @@ const AdminPanel = () => {
   };
 
   const handleBuyCredits = () => {
-    window.location.href = "/pricing"; // Redirect to pricing page
+    window.location.href = "/pricing";
   };
 
   return (

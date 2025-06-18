@@ -1,15 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { getAuth } from "firebase/auth";
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  setDoc,
-  ref,
-  uploadBytes,
-  getDownloadURL,
-} from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import "../styles/GeneratorStyles.css";
 
 const PixverseGenerator = () => {
@@ -31,7 +23,6 @@ const PixverseGenerator = () => {
   const db = getFirestore();
   const storage = getStorage();
 
-  // Calculate credits cost based on duration and quality
   const calculateCreditsCost = () => {
     let baseCredits;
     if (quality === "540p") baseCredits = 6;
@@ -58,7 +49,7 @@ const PixverseGenerator = () => {
       return url;
     } catch (error) {
       console.error("Error saving video to Storage:", error.message);
-      return videoUrl; // Fallback to original URL if failed
+      return videoUrl;
     }
   };
 
@@ -117,16 +108,10 @@ const PixverseGenerator = () => {
     }
     const userId = user.uid;
 
-    // Check for payment status in URL
     const urlParams = new URLSearchParams(window.location.search);
     const paymentStatus = urlParams.get("payment");
     const urlUserId = urlParams.get("userId");
     const creditsAdded = urlParams.get("credits");
-    console.log("URL Parameters after payment:", {
-      paymentStatus,
-      urlUserId,
-      creditsAdded,
-    });
 
     if (paymentStatus === "success" && urlUserId === userId && creditsAdded) {
       setError(`Payment successful! Added ${creditsAdded} credits.`);
@@ -193,7 +178,6 @@ const PixverseGenerator = () => {
       quality,
       duration: parseInt(duration),
     };
-    console.log("Sending payload:", payload);
     setLoading(true);
     setError("");
     setCurrentVideo("");
@@ -210,7 +194,6 @@ const PixverseGenerator = () => {
 
       if (!response.ok) throw new Error(await response.text());
       const data = await response.json();
-      console.log("Generate response:", data);
       if (!data.predictionId)
         throw new Error("No prediction ID returned from server.");
       setActiveJobs((prevJobs) => [

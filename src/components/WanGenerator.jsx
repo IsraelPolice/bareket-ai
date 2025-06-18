@@ -6,11 +6,8 @@ import {
   getDoc,
   setDoc,
   onSnapshot,
-  ref,
-  uploadBytes,
-  getDownloadURL,
 } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import "../styles/GeneratorStyles.css";
 
 const WanGenerator = () => {
@@ -33,10 +30,9 @@ const WanGenerator = () => {
   const db = getFirestore();
   const storage = getStorage();
 
-  // Calculate credits cost based on duration (WanGenerator doesn't have quality)
   const calculateCreditsCost = () => {
-    let baseCredits = 8; // Base cost for 5 seconds
-    if (duration === "10") baseCredits *= 2; // Double the cost for 10 seconds
+    let baseCredits = 8;
+    if (duration === "10") baseCredits *= 2;
     return baseCredits;
   };
 
@@ -57,7 +53,7 @@ const WanGenerator = () => {
       return url;
     } catch (error) {
       console.error("Error saving video to Storage:", error.message);
-      return videoUrl; // Fallback to original URL if failed
+      return videoUrl;
     }
   };
 
@@ -114,18 +110,11 @@ const WanGenerator = () => {
       return;
     }
     const userId = user.uid;
-    console.log("Initializing Firestore listeners for user:", userId);
 
-    // Check for payment status in URL
     const urlParams = new URLSearchParams(window.location.search);
     const paymentStatus = urlParams.get("payment");
     const urlUserId = urlParams.get("userId");
     const creditsAdded = urlParams.get("credits");
-    console.log("URL Parameters after payment:", {
-      paymentStatus,
-      urlUserId,
-      creditsAdded,
-    });
 
     if (paymentStatus === "success" && urlUserId === userId && creditsAdded) {
       setError(`Payment successful! Added ${creditsAdded} credits.`);
@@ -150,10 +139,8 @@ const WanGenerator = () => {
       creditsRef,
       (doc) => {
         if (doc.exists()) {
-          console.log("Credits updated:", doc.data().value);
           setCredits(doc.data().value);
         } else {
-          console.log("Credits document does not exist, creating...");
           setDoc(creditsRef, { value: 10 }).then(() => setCredits(10));
         }
       },
@@ -168,10 +155,8 @@ const WanGenerator = () => {
       videosRef,
       (doc) => {
         if (doc.exists()) {
-          console.log("Videos updated:", doc.data().list);
           setPreviousVideos(doc.data().list || []);
         } else {
-          console.log("Videos document does not exist, creating...");
           setDoc(videosRef, { list: [] }, { merge: true }).then(() =>
             setPreviousVideos([])
           );
@@ -217,13 +202,11 @@ const WanGenerator = () => {
       duration: parseInt(duration),
       ...(startImage ? { image: startImage } : {}),
     };
-    console.log("Sending payload:", payload);
     setLoading(true);
     setError("");
     setCurrentVideo("");
     try {
       const userId = user.uid;
-      console.log("Generating video for user:", userId);
       const response = await fetch(
         "https://saturn-backend-sdht.onrender.com/generate-video",
         {
@@ -238,7 +221,6 @@ const WanGenerator = () => {
         throw new Error(errorData.error || `HTTP error: ${response.status}`);
       }
       const data = await response.json();
-      console.log("Generate response:", data);
       if (!data.predictionId) {
         throw new Error("No prediction ID returned from server.");
       }
