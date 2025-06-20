@@ -69,6 +69,8 @@ const WanGenerator = () => {
         if (!user) throw new Error("User not authenticated");
         const userId = user.uid;
         let status = "processing";
+        let hasSaved = false;
+
         while (status === "processing") {
           const response = await fetch(
             `https://saturn-backend-sdht.onrender.com/check-status/${predictionId}`,
@@ -77,17 +79,20 @@ const WanGenerator = () => {
           if (!response.ok) throw new Error(await response.text());
           const data = await response.json();
           status = data.status;
-          if (status === "succeeded" && data.videoUrl) {
+
+          if (status === "succeeded" && data.videoUrl && !hasSaved) {
             const savedUrl = await saveVideoToStorage(
               data.videoUrl,
               userId,
               prompt
             );
             setCurrentVideo(savedUrl);
+            setCredits(data.value);
             setLoading(false);
             setActiveJobs((prevJobs) =>
               prevJobs.filter((job) => job.predictionId !== predictionId)
             );
+            hasSaved = true;
             break;
           } else if (status === "failed" || status === "canceled") {
             setError(data.error || "Video generation failed");
@@ -143,11 +148,8 @@ const WanGenerator = () => {
     const unsubscribeCredits = onSnapshot(
       creditsRef,
       (doc) => {
-        if (doc.exists()) {
-          setCredits(doc.data().value);
-        } else {
-          setDoc(creditsRef, { value: 10 }).then(() => setCredits(10));
-        }
+        if (doc.exists()) setCredits(doc.data().value);
+        else setDoc(creditsRef, { value: 10 }).then(() => setCredits(10));
       },
       (error) => {
         console.error("Error listening to credits:", error.message);
@@ -159,13 +161,11 @@ const WanGenerator = () => {
     const unsubscribeVideos = onSnapshot(
       videosRef,
       (doc) => {
-        if (doc.exists()) {
-          setPreviousVideos(doc.data().list || []);
-        } else {
+        if (doc.exists()) setPreviousVideos(doc.data().list || []);
+        else
           setDoc(videosRef, { list: [] }, { merge: true }).then(() =>
             setPreviousVideos([])
           );
-        }
       },
       (error) => {
         console.error("Error listening to videos:", error.message);
@@ -174,9 +174,8 @@ const WanGenerator = () => {
     );
 
     const savedJobs = JSON.parse(localStorage.getItem("activeJobs") || "[]");
-    if (savedJobs.length > 0) {
+    if (savedJobs.length > 0)
       savedJobs.forEach((job) => checkJobStatus(job.predictionId));
-    }
 
     return () => {
       unsubscribeCredits();
@@ -226,9 +225,8 @@ const WanGenerator = () => {
         throw new Error(errorData.error || `HTTP error: ${response.status}`);
       }
       const data = await response.json();
-      if (!data.predictionId) {
+      if (!data.predictionId)
         throw new Error("No prediction ID returned from server.");
-      }
       setActiveJobs((prevJobs) => [
         ...prevJobs,
         { predictionId: data.predictionId, prompt, createdAt: Date.now() },
@@ -253,7 +251,6 @@ const WanGenerator = () => {
   };
 
   const handleDragOver = (e) => e.preventDefault();
-
   const handleDrop = (e) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];

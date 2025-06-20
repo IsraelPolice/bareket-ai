@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { getAuth } from "firebase/auth";
-import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  onSnapshot,
+} from "firebase/firestore";
 import {
   getStorage,
   ref as storageRef,
@@ -29,9 +35,8 @@ const PixverseGenerator = () => {
   const storage = getStorage();
 
   const calculateCreditsCost = () => {
-    let baseCredits;
-    if (quality === "540p") baseCredits = 6;
-    else if (quality === "720p") baseCredits = 9;
+    let baseCredits = 6;
+    if (quality === "720p") baseCredits = 9;
     else if (quality === "1080p") baseCredits = 12;
     if (duration === "10") baseCredits *= 2;
     return baseCredits;
@@ -65,6 +70,8 @@ const PixverseGenerator = () => {
         if (!user) throw new Error("User not authenticated");
         const userId = user.uid;
         let status = "processing";
+        let hasSaved = false;
+
         while (status === "processing") {
           const response = await fetch(
             `https://saturn-backend-sdht.onrender.com/check-status/${predictionId}`,
@@ -73,7 +80,8 @@ const PixverseGenerator = () => {
           if (!response.ok) throw new Error(await response.text());
           const data = await response.json();
           status = data.status;
-          if (status === "succeeded" && data.videoUrl) {
+
+          if (status === "succeeded" && data.videoUrl && !hasSaved) {
             const savedUrl = await saveVideoToStorage(
               data.videoUrl,
               userId,
@@ -85,6 +93,7 @@ const PixverseGenerator = () => {
             setActiveJobs((prevJobs) =>
               prevJobs.filter((job) => job.predictionId !== predictionId)
             );
+            hasSaved = true;
             break;
           } else if (status === "failed" || status === "canceled") {
             setError(data.error || "Unknown error");
@@ -136,31 +145,48 @@ const PixverseGenerator = () => {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    const loadInitialData = async () => {
-      try {
-        const creditsRef = doc(db, "users", userId, "credits", "current");
-        const creditsSnap = await getDoc(creditsRef);
-        if (creditsSnap.exists()) setCredits(creditsSnap.data().value);
+    const creditsRef = doc(db, "users", userId, "credits", "current");
+    const unsubscribeCredits = onSnapshot(
+      creditsRef,
+      (doc) => {
+        if (doc.exists()) setCredits(doc.data().value);
         else {
-          await setDoc(creditsRef, { value: 10 });
-          setCredits(10);
+          setDoc(creditsRef, { value: 10 }, { merge: true }).then(() =>
+            setCredits(10)
+          );
         }
-        const videosRef = doc(db, "users", userId, "videos", "list");
-        const videosSnap = await getDoc(videosRef);
-        if (videosSnap.exists())
-          setPreviousVideos(videosSnap.data().list || []);
-        else await setDoc(videosRef, { list: [] }, { merge: true });
-        const savedJobs = JSON.parse(
-          localStorage.getItem("activeJobs") || "[]"
-        );
-        if (savedJobs.length > 0)
-          savedJobs.forEach((job) => checkJobStatus(job.predictionId));
-      } catch (err) {
-        console.error("Error loading initial data:", err.message);
-        setError(`Error fetching data: ${err.message}`);
+      },
+      (error) => {
+        console.error("Error listening to credits:", error.message);
+        setError("Failed to load credits");
       }
+    );
+
+    const videosRef = doc(db, "users", userId, "videos", "list");
+    const unsubscribeVideos = onSnapshot(
+      videosRef,
+      (doc) => {
+        if (doc.exists()) setPreviousVideos(doc.data().list || []);
+        else
+          setDoc(videosRef, { list: [] }, { merge: true }).then(() =>
+            setPreviousVideos([])
+          );
+      },
+      (error) => {
+        console.error("Error listening to videos:", error.message);
+        setError("Failed to load previous videos");
+      }
+    );
+
+    const savedJobs = JSON.parse(localStorage.getItem("activeJobs") || "[]");
+    if (savedJobs.length > 0) {
+      savedJobs.forEach((job) => checkJobStatus(job.predictionId));
+    }
+
+    return () => {
+      unsubscribeCredits();
+      unsubscribeVideos();
     };
-    loadInitialData();
   }, [auth, db, checkJobStatus]);
 
   const generateVideo = async () => {

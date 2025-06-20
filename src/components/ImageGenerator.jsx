@@ -26,23 +26,17 @@ const ImageGenerator = () => {
   const [showCreditOptions, setShowCreditOptions] = useState(false);
   const startRef = useRef(null);
 
-  // Load currentImage from localStorage on mount
   useEffect(() => {
     const savedImage = localStorage.getItem("currentImage");
-    if (savedImage && !currentImage) {
-      setCurrentImage(savedImage);
-    }
+    if (savedImage && !currentImage) setCurrentImage(savedImage);
   }, []);
 
-  // Calculate credits cost (1 credit per image)
   const calculateCreditsCost = () => 1;
   const creditsCost = calculateCreditsCost();
 
   useEffect(() => {
     localStorage.setItem("activeJobs", JSON.stringify(activeJobs));
-    if (currentImage) {
-      localStorage.setItem("currentImage", currentImage);
-    }
+    if (currentImage) localStorage.setItem("currentImage", currentImage);
   }, [activeJobs, currentImage]);
 
   const checkJobStatus = useCallback(
@@ -53,25 +47,14 @@ const ImageGenerator = () => {
         const userId = user.uid;
         let status = "processing";
         while (status === "processing" || status === "starting") {
-          console.log(`Checking status for prediction: ${predictionId}`);
           const response = await fetch(
             `https://saturn-backend-sdht.onrender.com/check-status/${predictionId}`,
-            {
-              headers: { "user-id": userId },
-            }
+            { headers: { "user-id": userId } }
           );
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Failed to check status: ${errorText}`);
-          }
+          if (!response.ok) throw new Error(await response.text());
           const data = await response.json();
-          console.log("Full status response:", data);
           status = data.status;
           if (status === "succeeded" && (data.imageUrl || data.videoUrl)) {
-            console.log(
-              "Setting currentImage:",
-              data.imageUrl || data.videoUrl
-            );
             setCurrentImage(data.imageUrl || data.videoUrl);
             setLoading(false);
             setActiveJobs((prevJobs) =>
@@ -135,11 +118,8 @@ const ImageGenerator = () => {
     const unsubscribeCredits = onSnapshot(
       creditsRef,
       (doc) => {
-        if (doc.exists()) {
-          setCredits(doc.data().value);
-        } else {
-          setDoc(creditsRef, { value: 10 }).then(() => setCredits(10));
-        }
+        if (doc.exists()) setCredits(doc.data().value);
+        else setDoc(creditsRef, { value: 10 }).then(() => setCredits(10));
       },
       (error) => {
         console.error("Error listening to credits:", error.message);
@@ -153,14 +133,10 @@ const ImageGenerator = () => {
       (doc) => {
         if (doc.exists()) {
           const images = doc.data().list || [];
-          console.log("Updated previousImages:", images);
           setPreviousImages(images);
-          if (images.length > 0 && !currentImage) {
-            setCurrentImage(images[images.length - 1].src); // קח את התמונה האחרונה
-          }
-        } else {
-          setDoc(imagesRef, { list: [] }, { merge: true });
-        }
+          if (images.length > 0 && !currentImage)
+            setCurrentImage(images[images.length - 1].src);
+        } else setDoc(imagesRef, { list: [] }, { merge: true });
       },
       (error) => {
         console.error("Error listening to images:", error.message);
@@ -169,9 +145,8 @@ const ImageGenerator = () => {
     );
 
     const savedJobs = JSON.parse(localStorage.getItem("activeJobs") || "[]");
-    if (savedJobs.length > 0) {
+    if (savedJobs.length > 0)
       savedJobs.forEach((job) => checkJobStatus(job.predictionId));
-    }
 
     return () => {
       unsubscribeCredits();
@@ -211,28 +186,19 @@ const ImageGenerator = () => {
         num_inference_steps: 25,
         ...(startImage ? { image: startImage } : {}),
       };
-      console.log("Sending payload to generate-image:", payload);
       const response = await fetch(
         "https://saturn-backend-sdht.onrender.com/generate-image",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "user-id": userId,
-          },
+          headers: { "Content-Type": "application/json", "user-id": userId },
           body: JSON.stringify(payload),
         }
       );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText);
-      }
+      if (!response.ok) throw new Error(await response.text());
       const data = await response.json();
-      console.log("Generate response:", data);
-      if (!data.predictionId) {
+      if (!data.predictionId)
         throw new Error("No prediction ID returned from server.");
-      }
       setActiveJobs((prevJobs) => [
         ...prevJobs,
         { predictionId: data.predictionId, prompt, createdAt: Date.now() },
@@ -249,22 +215,7 @@ const ImageGenerator = () => {
     const file = e.target.files[0];
     if (file && file.size <= 5 * 1024 * 1024) {
       const reader = new FileReader();
-      reader.onloadend = async () => {
-        const dataUrl = reader.result;
-        const user = auth.currentUser;
-        if (user) {
-          const userId = user.uid;
-          const storageRef = ref(
-            storage,
-            `users/${userId}/images/${Date.now()}.png`
-          );
-          const response = await fetch(dataUrl);
-          const blob = await response.blob();
-          await uploadBytes(storageRef, blob);
-          const imageUrl = await getDownloadURL(storageRef);
-          setStartImage(imageUrl);
-        }
-      };
+      reader.onloadend = () => setStartImage(reader.result);
       reader.readAsDataURL(file);
     } else {
       setError("Image must be under 5MB.");
@@ -281,22 +232,7 @@ const ImageGenerator = () => {
       file.size <= 5 * 1024 * 1024
     ) {
       const reader = new FileReader();
-      reader.onloadend = async () => {
-        const dataUrl = reader.result;
-        const user = auth.currentUser;
-        if (user) {
-          const userId = user.uid;
-          const storageRef = ref(
-            storage,
-            `users/${userId}/images/${Date.now()}.png`
-          );
-          const response = await fetch(dataUrl);
-          const blob = await response.blob();
-          await uploadBytes(storageRef, blob);
-          const imageUrl = await getDownloadURL(storageRef);
-          setStartImage(imageUrl);
-        }
-      };
+      reader.onloadend = () => setStartImage(reader.result);
       reader.readAsDataURL(file);
     } else {
       setError("Invalid file type or size. Image must be under 5MB.");
@@ -328,9 +264,7 @@ const ImageGenerator = () => {
         throw new Error(errorData.error || `HTTP error: ${response.status}`);
       }
       const data = await response.json();
-      if (data.paymentUrl) {
-        window.location.href = data.paymentUrl;
-      }
+      if (data.paymentUrl) window.location.href = data.paymentUrl;
     } catch (error) {
       setError(`Error initiating payment: ${error.message}`);
     }
