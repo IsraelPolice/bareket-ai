@@ -424,11 +424,9 @@ app.post("/generate-video", async (req, res) => {
 
       if (currentCredits < creditCost) {
         console.log("Insufficient credits:", { currentCredits, creditCost });
-        return res
-          .status(400)
-          .json({
-            error: `Insufficient credits. Requires ${creditCost} credits.`,
-          });
+        return res.status(400).json({
+          error: `Insufficient credits. Requires ${creditCost} credits.`,
+        });
       }
     } catch (firestoreError) {
       console.error("Firestore error during credits check:", {
@@ -485,6 +483,27 @@ app.post("/generate-video", async (req, res) => {
     if (!prediction?.id) {
       console.error("No prediction ID in response:", prediction);
       throw new Error("No prediction ID returned from Replicate");
+    }
+
+    // שמירת ה-job עם creditCost
+    try {
+      console.log(`Saving job to Firestore for user ${userId}...`);
+      const jobRef = db.doc(`users/${userId}/videoJobs/${prediction.id}`);
+      await jobRef.set({
+        predictionId: prediction.id,
+        status: prediction.status,
+        prompt,
+        model: cleanedModel,
+        creditCost: creditCost, // הוספת creditCost ל-job
+        createdAt: new Date().toISOString(),
+      });
+      console.log("Job saved with credit cost:", creditCost);
+    } catch (firestoreError) {
+      console.error("Firestore error during job save:", {
+        message: firestoreError.message,
+        code: firestoreError.code,
+        stack: firestoreError.stack,
+      });
     }
 
     res.json({ predictionId: prediction.id, status: prediction.status });
@@ -580,13 +599,24 @@ app.get("/check-status/:predictionId", async (req, res) => {
         );
         try {
           const creditsRef = db.doc(`users/${userId}/credits/current`);
-          await creditsRef.update({
-            value: currentCredits - jobData.creditCost || 0,
-          });
-          console.log(
-            "Credits deducted after successful video generation:",
-            currentCredits - (jobData.creditCost || 0)
-          );
+          const creditsSnap = await creditsRef.get();
+          const currentCredits = creditsSnap.exists
+            ? creditsSnap.data().value
+            : 0;
+          const costToDeduct = jobData.creditCost || 0; // השתמש ב-creditCost מה-job או 0 כברירת מחדל
+          if (currentCredits >= costToDeduct) {
+            await creditsRef.update({ value: currentCredits - costToDeduct });
+            console.log(
+              `Credits deducted: ${costToDeduct}. New total: ${
+                currentCredits - costToDeduct
+              }`
+            );
+          } else {
+            console.error("Insufficient credits for deduction:", {
+              currentCredits,
+              costToDeduct,
+            });
+          }
         } catch (firestoreError) {
           console.error("Firestore error during credits deduction:", {
             message: firestoreError.message,
@@ -648,7 +678,7 @@ app.get("/check-status/:predictionId", async (req, res) => {
       return res.json({
         status: prediction.status,
         [responseKey]: savedUrl,
-        value: currentCredits - (jobData.creditCost || 0),
+        value: currentCredits - (jobData.creditCost || 0), // שלח את הערך החדש של הקרדיטים
       });
     } else if (
       prediction.status === "failed" ||

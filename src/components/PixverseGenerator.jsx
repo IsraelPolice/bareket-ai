@@ -80,7 +80,7 @@ const PixverseGenerator = () => {
               prompt
             );
             setCurrentVideo(savedUrl);
-            setCredits(data.value);
+            if (data.value !== undefined) setCredits(data.value); // עדכון הקרדיטים מהשרת
             setLoading(false);
             setActiveJobs((prevJobs) =>
               prevJobs.filter((job) => job.predictionId !== predictionId)

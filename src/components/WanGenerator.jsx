@@ -84,6 +84,7 @@ const WanGenerator = () => {
               prompt
             );
             setCurrentVideo(savedUrl);
+            if (data.value !== undefined) setCredits(data.value); // עדכון הקרדיטים מהשרת
             setLoading(false);
             setActiveJobs((prevJobs) =>
               prevJobs.filter((job) => job.predictionId !== predictionId)
