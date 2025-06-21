@@ -312,7 +312,20 @@ app.post("/generate-image", async (req, res) => {
         throw new Error("No prediction ID returned from Replicate");
       }
 
-      const creditCost = 1; // קביעת עלות קבועה לתמונה
+      // בדיקת קרדיטים וחיסור מידי
+      const creditsRef = db.doc(`users/${userId}/credits/current`);
+      const creditsSnap = await creditsRef.get();
+      const docExists = creditsSnap.exists;
+      const currentCredits = docExists ? creditsSnap.data().value : 0;
+      if (currentCredits < 1) {
+        console.log("Insufficient credits:", { currentCredits });
+        return res
+          .status(400)
+          .json({ error: "Insufficient credits. Requires 1 credit." });
+      }
+      await creditsRef.update({ value: currentCredits - 1 });
+      console.log("Credits updated to:", currentCredits - 1);
+
       try {
         console.log(`Saving job to Firestore for user ${userId}...`);
         const jobRef = db.doc(`users/${userId}/imageJobs/${prediction.id}`);
@@ -321,10 +334,10 @@ app.post("/generate-image", async (req, res) => {
           status: prediction.status,
           prompt,
           model: cleanedModel,
-          creditCost: creditCost, // הוספת creditCost ל-job
+          creditCost: 1, // הוספת creditCost ל-job
           createdAt: new Date().toISOString(),
         });
-        console.log("Job saved with credit cost:", creditCost);
+        console.log("Job saved with credit cost:", 1);
       } catch (firestoreError) {
         console.error("Firestore error during job save:", {
           message: firestoreError.message,
@@ -395,13 +408,13 @@ app.post("/generate-video", async (req, res) => {
       creditCost = 6; // Base cost
       if (quality === "720p") creditCost = 9;
       else if (quality === "1080p") creditCost = 12;
-      if (parseInt(duration) === 10) creditCost *= 2; // Double for 10 seconds
+      if (parseInt(duration) === 10) creditCost *= 2;
     } else if (
       cleanedModel === "wavespeedai/wan-2.1-i2v-480p" ||
       cleanedModel === "wavespeedai/wan-2.1-t2v-480p"
     ) {
       creditCost = 8; // Base cost for WAN
-      if (parseInt(duration) === 10) creditCost *= 2; // 16 credits for 10 seconds
+      if (parseInt(duration) === 10) creditCost *= 2;
     }
 
     let currentCredits = 0;
@@ -409,10 +422,7 @@ app.post("/generate-video", async (req, res) => {
       console.log(`Checking credits for user ${userId} in Firestore...`);
       const creditsRef = db.doc(`users/${userId}/credits/current`);
       const creditsSnap = await creditsRef.get();
-      const docExists =
-        typeof creditsSnap.exists === "function"
-          ? creditsSnap.exists()
-          : creditsSnap.exists;
+      const docExists = creditsSnap.exists;
       if (!docExists) {
         console.log(
           "Credits document does not exist, creating with 10 credits..."
@@ -430,14 +440,18 @@ app.post("/generate-video", async (req, res) => {
           error: `Insufficient credits. Requires ${creditCost} credits.`,
         });
       }
+
+      console.log(`Updating credits for user ${userId}...`);
+      await creditsRef.update({ value: currentCredits - creditCost });
+      console.log("Credits updated to:", currentCredits - creditCost);
     } catch (firestoreError) {
-      console.error("Firestore error during credits check:", {
+      console.error("Firestore error during credits check/update:", {
         message: firestoreError.message,
         code: firestoreError.code,
         stack: firestoreError.stack,
       });
       throw new Error(
-        `Failed to check credits in Firestore: ${firestoreError.message}`
+        `Failed to update credits in Firestore: ${firestoreError.message}`
       );
     }
 
@@ -487,7 +501,6 @@ app.post("/generate-video", async (req, res) => {
       throw new Error("No prediction ID returned from Replicate");
     }
 
-    // שמירת ה-job עם creditCost
     try {
       console.log(`Saving job to Firestore for user ${userId}...`);
       const jobRef = db.doc(`users/${userId}/videoJobs/${prediction.id}`);
@@ -545,10 +558,7 @@ app.get("/check-status/:predictionId", async (req, res) => {
     let jobData = {};
     try {
       const jobSnap = await jobRef.get();
-      const docExists =
-        typeof jobSnap.exists === "function"
-          ? jobSnap.exists()
-          : jobSnap.exists;
+      const docExists = jobSnap.exists;
       if (docExists) {
         jobData = jobSnap.data();
         await jobRef.update({ status: prediction.status });
@@ -573,10 +583,7 @@ app.get("/check-status/:predictionId", async (req, res) => {
       console.log(`Checking credits for user ${userId} in Firestore...`);
       const creditsRef = db.doc(`users/${userId}/credits/current`);
       const creditsSnap = await creditsRef.get();
-      const docExists =
-        typeof creditsSnap.exists === "function"
-          ? creditsSnap.exists()
-          : creditsSnap.exists;
+      const docExists = creditsSnap.exists;
       currentCredits = docExists ? creditsSnap.data().value : 0;
       console.log("Credits found:", currentCredits);
     } catch (firestoreError) {
@@ -593,53 +600,7 @@ app.get("/check-status/:predictionId", async (req, res) => {
         : prediction.output;
       let savedUrl = outputUrl;
 
-      // Save to Firebase Storage and deduct credits
-      if (
-        prediction.version.startsWith("pixverse") ||
-        prediction.version.startsWith("wavespeedai")
-      ) {
-        savedUrl = await uploadVideoToFirebase(
-          outputUrl,
-          `users/${userId}/videos/video-${predictionId}.mp4`,
-          userId
-        );
-      } else if (prediction.version.startsWith("stability")) {
-        savedUrl = await uploadImageToFirebase(
-          outputUrl,
-          `users/${userId}/images/image-${predictionId}.jpg`,
-          userId
-        );
-      }
-
-      try {
-        const creditsRef = db.doc(`users/${userId}/credits/current`);
-        const creditsSnap = await creditsRef.get();
-        const currentCredits = creditsSnap.exists
-          ? creditsSnap.data().value
-          : 0;
-        const costToDeduct = jobData.creditCost || 0; // השתמש ב-creditCost מה-job או 0 כברירת מחדל
-        if (currentCredits >= costToDeduct) {
-          await creditsRef.update({ value: currentCredits - costToDeduct });
-          console.log(
-            `Credits deducted: ${costToDeduct}. New total: ${
-              currentCredits - costToDeduct
-            }`
-          );
-        } else {
-          console.error("Insufficient credits for deduction:", {
-            currentCredits,
-            costToDeduct,
-          });
-        }
-      } catch (firestoreError) {
-        console.error("Firestore error during credits deduction:", {
-          message: firestoreError.message,
-          code: firestoreError.code,
-          stack: firestoreError.stack,
-        });
-        throw new Error(`Failed to deduct credits: ${firestoreError.message}`);
-      }
-
+      // שמירה ל-Firestore ללא חיסור קרדיטים נוסף
       try {
         console.log(`Saving output to Firestore for user ${userId}...`);
         const collectionRef = db.doc(
@@ -648,8 +609,7 @@ app.get("/check-status/:predictionId", async (req, res) => {
           }/list`
         );
         const snap = await collectionRef.get();
-        const docExists =
-          typeof snap.exists === "function" ? snap.exists() : snap.exists;
+        const docExists = snap.exists;
         const items = docExists ? snap.data().list || [] : [];
         items.push({
           src: savedUrl,
@@ -662,10 +622,7 @@ app.get("/check-status/:predictionId", async (req, res) => {
         console.log(`Removing from active jobs for user ${userId}...`);
         const activeJobsRef = db.doc(`users/${userId}/activeJobs/list`);
         const activeSnap = await activeJobsRef.get();
-        const activeExists =
-          typeof activeSnap.exists === "function"
-            ? activeSnap.exists()
-            : activeSnap.exists;
+        const activeExists = activeSnap.exists;
         const jobs = activeExists ? activeSnap.data().jobs || [] : [];
         const updatedJobs = jobs.filter(
           (job) => job.predictionId !== predictionId
@@ -689,7 +646,7 @@ app.get("/check-status/:predictionId", async (req, res) => {
       return res.json({
         status: prediction.status,
         [responseKey]: savedUrl,
-        value: currentCredits - (jobData.creditCost || 0), // שלח את הערך החדש של הקרדיטים
+        value: currentCredits, // שלח את הערך הנוכחי של הקרדיטים
       });
     } else if (
       prediction.status === "failed" ||
@@ -701,10 +658,7 @@ app.get("/check-status/:predictionId", async (req, res) => {
         );
         const activeJobsRef = db.doc(`users/${userId}/activeJobs/list`);
         const activeSnap = await activeJobsRef.get();
-        const docExists =
-          typeof activeSnap.exists === "function"
-            ? activeSnap.exists()
-            : activeSnap.exists;
+        const docExists = activeSnap.exists;
         const jobs = docExists ? activeSnap.data().jobs || [] : [];
         const updatedJobs = jobs.filter(
           (job) => job.predictionId !== predictionId
