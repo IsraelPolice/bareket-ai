@@ -312,6 +312,7 @@ app.post("/generate-image", async (req, res) => {
         throw new Error("No prediction ID returned from Replicate");
       }
 
+      const creditCost = 1; // קביעת עלות קבועה לתמונה
       try {
         console.log(`Saving job to Firestore for user ${userId}...`);
         const jobRef = db.doc(`users/${userId}/imageJobs/${prediction.id}`);
@@ -320,9 +321,10 @@ app.post("/generate-image", async (req, res) => {
           status: prediction.status,
           prompt,
           model: cleanedModel,
+          creditCost: creditCost, // הוספת creditCost ל-job
           createdAt: new Date().toISOString(),
         });
-        console.log("Job saved");
+        console.log("Job saved with credit cost:", creditCost);
       } catch (firestoreError) {
         console.error("Firestore error during job save:", {
           message: firestoreError.message,
@@ -535,7 +537,11 @@ app.get("/check-status/:predictionId", async (req, res) => {
       error: prediction.error,
     });
 
-    const jobRef = db.doc(`users/${userId}/videoJobs/${predictionId}`);
+    const jobRef = db.doc(
+      `users/${userId}/${
+        prediction.version.startsWith("stability") ? "imageJobs" : "videoJobs"
+      }/${predictionId}`
+    );
     let jobData = {};
     try {
       const jobSnap = await jobRef.get();
@@ -587,7 +593,7 @@ app.get("/check-status/:predictionId", async (req, res) => {
         : prediction.output;
       let savedUrl = outputUrl;
 
-      // Save video to Firebase Storage and deduct credits
+      // Save to Firebase Storage and deduct credits
       if (
         prediction.version.startsWith("pixverse") ||
         prediction.version.startsWith("wavespeedai")
@@ -597,36 +603,41 @@ app.get("/check-status/:predictionId", async (req, res) => {
           `users/${userId}/videos/video-${predictionId}.mp4`,
           userId
         );
-        try {
-          const creditsRef = db.doc(`users/${userId}/credits/current`);
-          const creditsSnap = await creditsRef.get();
-          const currentCredits = creditsSnap.exists
-            ? creditsSnap.data().value
-            : 0;
-          const costToDeduct = jobData.creditCost || 0; // השתמש ב-creditCost מה-job או 0 כברירת מחדל
-          if (currentCredits >= costToDeduct) {
-            await creditsRef.update({ value: currentCredits - costToDeduct });
-            console.log(
-              `Credits deducted: ${costToDeduct}. New total: ${
-                currentCredits - costToDeduct
-              }`
-            );
-          } else {
-            console.error("Insufficient credits for deduction:", {
-              currentCredits,
-              costToDeduct,
-            });
-          }
-        } catch (firestoreError) {
-          console.error("Firestore error during credits deduction:", {
-            message: firestoreError.message,
-            code: firestoreError.code,
-            stack: firestoreError.stack,
-          });
-          throw new Error(
-            `Failed to deduct credits: ${firestoreError.message}`
+      } else if (prediction.version.startsWith("stability")) {
+        savedUrl = await uploadImageToFirebase(
+          outputUrl,
+          `users/${userId}/images/image-${predictionId}.jpg`,
+          userId
+        );
+      }
+
+      try {
+        const creditsRef = db.doc(`users/${userId}/credits/current`);
+        const creditsSnap = await creditsRef.get();
+        const currentCredits = creditsSnap.exists
+          ? creditsSnap.data().value
+          : 0;
+        const costToDeduct = jobData.creditCost || 0; // השתמש ב-creditCost מה-job או 0 כברירת מחדל
+        if (currentCredits >= costToDeduct) {
+          await creditsRef.update({ value: currentCredits - costToDeduct });
+          console.log(
+            `Credits deducted: ${costToDeduct}. New total: ${
+              currentCredits - costToDeduct
+            }`
           );
+        } else {
+          console.error("Insufficient credits for deduction:", {
+            currentCredits,
+            costToDeduct,
+          });
         }
+      } catch (firestoreError) {
+        console.error("Firestore error during credits deduction:", {
+          message: firestoreError.message,
+          code: firestoreError.code,
+          stack: firestoreError.stack,
+        });
+        throw new Error(`Failed to deduct credits: ${firestoreError.message}`);
       }
 
       try {
